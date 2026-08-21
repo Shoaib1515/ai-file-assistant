@@ -1,0 +1,40 @@
+# Environment & Secrets
+.env
+*.env
+backend/.env
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+sql_app.db
+test.db
+test_verification.db
+backend/*.db
+
+# Python & Virtual Environments
+venv/
+backend/venv/
+.venv/
+__pycache__/
+backend/__pycache__/
+*.pyc
+.pytest_cache/
+backend/.pytest_cache/
+
+# Flutter & Mobile App Build Artifacts
+mobile_app/.dart_tool/
+mobile_app/build/
+mobile_app/.flutter-plugins-dependencies
+mobile_app/.idea/
+mobile_app/*.iml
+
+# Storage & Uploaded Files
+storage/
+backend/storage/
+
+# IDE / Editor Settings
+.vscode/
+.claude/
+.idea/
+*.log
