@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/chat_assistant_fab.dart';
+import '../widgets/missing_values_chart.dart';
 import 'edit_screen.dart';
 import 'history_screen.dart';
 import 'home_screen.dart';
@@ -147,7 +148,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.insert_chart_outlined,
-                  size: 40, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                  size: 40, color: AppColors.onSurfaceVariant.withValues(alpha: 0.5)),
               const SizedBox(height: AppSpacing.md),
               Text(
                 'Select a file from Home to see its analysis.',
@@ -233,14 +234,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.6)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.6)),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.primary.withOpacity(0.1),
+                AppColors.primary.withValues(alpha: 0.1),
                 AppColors.surface,
-                AppColors.secondaryContainer.withOpacity(0.2),
+                AppColors.secondaryContainer.withValues(alpha: 0.2),
               ],
             ),
           ),
@@ -288,7 +289,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
@@ -322,6 +323,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
+        MissingValuesChart(missingByColumn: missingByColumn),
+        const SizedBox(height: AppSpacing.lg),
         Text('ISSUES FOUND',
             style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant, letterSpacing: 1.0)),
         const SizedBox(height: AppSpacing.sm),
@@ -329,7 +332,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               borderRadius: BorderRadius.circular(AppRadius.xxl),
             ),
             child: Row(
@@ -367,7 +370,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.primaryFixed.withOpacity(0.8),
+        color: AppColors.primaryFixed.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
       ),
       child: Column(
@@ -394,7 +397,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: bg.withOpacity(0.8),
+        color: bg.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
       ),
       child: Column(
@@ -419,19 +422,19 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
+        color: Colors.white.withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.surfaceVariant.withOpacity(0.6)),
+        border: Border.all(color: AppColors.surfaceVariant.withValues(alpha: 0.6)),
       ),
       child: Row(
         children: [
-          Container(width: 4, height: 40, color: issue.color.withOpacity(0.8)),
+          Container(width: 4, height: 40, color: issue.color.withValues(alpha: 0.8)),
           const SizedBox(width: AppSpacing.sm),
           Container(
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: issue.color.withOpacity(0.12),
+              color: issue.color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(AppRadius.lg),
             ),
             child: Icon(issue.icon, color: issue.color, size: 20),
@@ -450,7 +453,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: issue.color.withOpacity(0.1),
+              color: issue.color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(

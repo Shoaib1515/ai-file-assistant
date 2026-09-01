@@ -4,7 +4,13 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = "http://192.168.1.6:8000";
+  // Prefer passing the backend URL at build time via:
+  // flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+  // or on a physical device: --dart-define=API_BASE_URL=http://<your-lan-ip>:8000
+  static String get baseUrl => const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://127.0.0.1:8000',
+      );
   static const String _tokenKey = "jwt_token";
 
   static Future<String?> getToken() async {

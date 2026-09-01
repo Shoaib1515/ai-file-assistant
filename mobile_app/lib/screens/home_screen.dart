@@ -253,7 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(AppRadius.xxl),
                     border: Border.all(color: Colors.white),
                   ),
@@ -290,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             }),
                           ),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.6),
+                    fillColor: Colors.white.withValues(alpha: 0.6),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       borderSide: BorderSide.none,
@@ -303,7 +303,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _filters.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+                    separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
                     itemBuilder: (context, i) {
                       final selected = i == _filterIndex;
                       final isFavorites = i == 3;
@@ -318,11 +318,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               : (isFavorites ? AppColors.onTertiaryFixedVariant : AppColors.onSurfaceVariant),
                         ),
                         backgroundColor:
-                            isFavorites ? AppColors.tertiaryFixed : Colors.white.withOpacity(0.6),
+                            isFavorites ? AppColors.tertiaryFixed : Colors.white.withValues(alpha: 0.6),
                         selectedColor: AppColors.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.full),
-                          side: BorderSide(color: Colors.white.withOpacity(0.8)),
+                          side: BorderSide(color: Colors.white.withValues(alpha: 0.8)),
                         ),
                       );
                     },
@@ -374,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         children: [
                           Icon(Icons.folder_off_outlined,
-                              size: 36, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                              size: 36, color: AppColors.onSurfaceVariant.withValues(alpha: 0.5)),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             _files.isEmpty

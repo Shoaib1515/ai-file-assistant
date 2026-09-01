@@ -14,7 +14,7 @@ class FileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withOpacity(0.6),
+      color: Colors.white.withValues(alpha: 0.6),
       borderRadius: BorderRadius.circular(AppRadius.xxl),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.xxl),
@@ -23,7 +23,7 @@ class FileCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.xxl),
-            border: Border.all(color: Colors.white.withOpacity(0.7)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.7)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -90,7 +90,7 @@ class FileCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.successContainer,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.success.withOpacity(0.3)),
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
           ),
           child: const Icon(Icons.check, color: AppColors.success, size: 16),
         );
@@ -100,7 +100,7 @@ class FileCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.warningContainer,
             borderRadius: BorderRadius.circular(AppRadius.full),
-            border: Border.all(color: AppColors.warning.withOpacity(0.25)),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.25)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -117,7 +117,7 @@ class FileCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.errorContainer,
             borderRadius: BorderRadius.circular(AppRadius.full),
-            border: Border.all(color: AppColors.error.withOpacity(0.2)),
+            border: Border.all(color: AppColors.error.withValues(alpha: 0.2)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

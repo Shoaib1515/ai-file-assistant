@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -7,10 +9,24 @@ from app.models import user, file_record  # noqa: F401
 
 Base.metadata.create_all(bind=engine)
 
+app_env = os.getenv("APP_ENV", "development").lower()
+allowed_origins_raw = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+)
+allowed_origins = [
+    origin.strip()
+    for origin in allowed_origins_raw.split(",")
+    if origin.strip()
+]
+
+if app_env == "production" and not allowed_origins:
+    raise RuntimeError("ALLOWED_ORIGINS environment variable must be configured for production.")
+
 app = FastAPI(title="AI File Assistant")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins if app_env == "production" else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

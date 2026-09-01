@@ -13,8 +13,8 @@ from app.db.database import get_db
 from app.models.user import User
 
 DEFAULT_SECRET = "ai-file-assistant-secret-key-2026-change-in-production"
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY or SECRET_KEY == DEFAULT_SECRET:
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or "dev-secret-key-change-in-production"
+if os.getenv("APP_ENV") == "production" and (not os.getenv("JWT_SECRET_KEY") or SECRET_KEY == DEFAULT_SECRET):
     raise RuntimeError("JWT_SECRET_KEY environment variable MUST be configured with a secure value in production.")
 security = HTTPBearer()
 

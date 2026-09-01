@@ -19,6 +19,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
   final _filters = const ['All', 'Uploads', 'Analysis', 'Edits'];
   final _groups = HistoryGroup.demo();
 
+  List<HistoryGroup> get _filteredGroups {
+    if (_filterIndex == 0) return _groups;
+
+    final selectedType = switch (_filterIndex) {
+      1 => HistoryType.upload,
+      2 => HistoryType.analysis,
+      3 => HistoryType.edit,
+      _ => null,
+    };
+
+    if (selectedType == null) return _groups;
+
+    return _groups
+        .map((group) => HistoryGroup(
+              label: group.label,
+              items: group.items.where((item) => item.type == selectedType).toList(),
+            ))
+        .where((group) => group.items.isNotEmpty)
+        .toList();
+  }
+
   void _onNavTap(int index) {
     if (index == _navIndex) return;
     switch (index) {
@@ -70,7 +91,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
                 scrollDirection: Axis.horizontal,
                 itemCount: _filters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
+                separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
                 itemBuilder: (context, i) {
                   final selected = i == _filterIndex;
                   return ChoiceChip(
@@ -94,7 +115,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 padding: const EdgeInsets.fromLTRB(
                     AppSpacing.containerPadding, 0, AppSpacing.containerPadding, 100),
                 children: [
-                  for (final group in _groups) ...[
+                  for (final group in _filteredGroups) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
                       child: Text(group.label, style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant)),
@@ -105,6 +126,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         )),
                     const SizedBox(height: AppSpacing.md),
                   ],
+                  if (_filteredGroups.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                      child: Center(
+                        child: Text(
+                          'No items in this category yet.',
+                          style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -115,13 +146,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  void _openHistoryDetails(HistoryItem item) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(item.title),
+        content: Text('${item.subtitle}\n\nUpdated ${item.time}'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _historyTile(HistoryItem item) {
     return Material(
       color: AppColors.surfaceContainerLowest,
       borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        onTap: () {},
+        onTap: () => _openHistoryDetails(item),
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(

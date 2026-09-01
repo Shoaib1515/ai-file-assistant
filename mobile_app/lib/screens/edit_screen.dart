@@ -220,15 +220,15 @@ class _EditScreenState extends State<EditScreen> {
         Expanded(
           child: ListView.separated(
             itemCount: _proposedChanges!.length,
-            separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
+            separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
             itemBuilder: (context, index) {
               final change = _proposedChanges![index];
               return Container(
                 padding: const EdgeInsets.all(AppSpacing.md),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.8),
+                  color: Colors.white.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(AppRadius.xxl),
-                  border: Border.all(color: AppColors.surfaceVariant.withOpacity(0.6)),
+                  border: Border.all(color: AppColors.surfaceVariant.withValues(alpha: 0.6)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -13,8 +13,10 @@ MAX_PROPOSED_CHANGES = 100
 
 
 def get_ai_client():
-    api_key = os.getenv("GEMINI_API_KEY", "dummy_key")
-    return genai.Client(api_key=api_key)
+    api_key = os.getenv("GEMINI_API_KEY")
+    if os.getenv("APP_ENV", "development").lower() == "production" and not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable must be configured in production.")
+    return genai.Client(api_key=api_key or "dummy_key")
 
 
 def build_prompt(question: str, file_summary: dict) -> str:

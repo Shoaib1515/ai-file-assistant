@@ -88,7 +88,7 @@ class FileItem {
     }
   }
 
-  Color get iconBackground => iconColor.withOpacity(0.12);
+  Color get iconBackground => iconColor.withValues(alpha: 0.12);
 
   /// Total missing values across every column, computed from the real
   /// /upload summary. Zero if there's no summary yet.

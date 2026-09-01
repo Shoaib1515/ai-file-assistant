@@ -51,14 +51,20 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment variables in .env
+# Copy the sample env file and adjust values if needed
+# cp .env.example .env
 # DATABASE_URL=sqlite:///./sql_app.db
+# JWT_SECRET_KEY=replace-with-a-secure-secret
 # GEMINI_API_KEY=your_actual_gemini_api_key
+# APP_ENV=development
+# ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 # Start FastAPI server
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 *API documentation available at `http://localhost:8000/docs`*
+
+For production, set `APP_ENV=production`, provide a real `JWT_SECRET_KEY`, `GEMINI_API_KEY`, and explicitly restrict `ALLOWED_ORIGINS` to your deployed frontend domain(s).
 
 ### 2. Mobile App Setup
 ```bash
@@ -67,11 +73,14 @@ cd mobile_app
 # Install dependencies
 flutter pub get
 
-# Configure backend IP address in lib/services/api_service.dart
-# static const String baseUrl = "http://<YOUR_LOCAL_IP>:8000";
+# Start the backend first, then launch the app with a backend URL override.
+# For Android emulator: http://10.0.2.2:8000
+# For iOS simulator: http://127.0.0.1:8000
+# For physical device: http://<YOUR_LAN_IP>:8000
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 
-# Launch application
-flutter run
+# Or set a custom URL for any device/host
+# flutter run --dart-define=API_BASE_URL=http://<YOUR_LOCAL_IP>:8000
 ```
 
 ---

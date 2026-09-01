@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/file_item.dart';
 import '../services/api_service.dart';
@@ -9,10 +10,10 @@ const double _kChatHeight = 360;
 const double _kMargin = 12;
 const double _kTapMoveThreshold = 8; // px — below this, a drag is treated as a tap
 
-class _ChatMessage {
+class ChatMessage {
   final String text;
   final bool fromBot;
-  const _ChatMessage({required this.text, required this.fromBot});
+  const ChatMessage({required this.text, required this.fromBot});
 }
 
 /// App-wide chat state. This is a singleton (not per-widget State), so the
@@ -35,8 +36,8 @@ class ChatAssistantState extends ChangeNotifier {
   /// assistant answers locally instead of calling the backend.
   FileItem? _currentFile;
 
-  final List<_ChatMessage> messages = [
-    const _ChatMessage(
+  final List<ChatMessage> messages = [
+    const ChatMessage(
       text: "Hello! How can I help you with your files today?",
       fromBot: true,
     ),
@@ -64,14 +65,14 @@ class ChatAssistantState extends ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || isSending) return;
 
-    messages.add(_ChatMessage(text: trimmed, fromBot: false));
+    messages.add(ChatMessage(text: trimmed, fromBot: false));
     notifyListeners();
 
     final file = _currentFile;
     if (file == null || file.summary == null) {
       // No file open right now — the backend needs a file summary to
       // answer anything meaningful, so don't call it with nothing.
-      messages.add(const _ChatMessage(
+      messages.add(const ChatMessage(
         text: "Open a file from Home first, then ask me anything about it.",
         fromBot: true,
       ));
@@ -84,9 +85,9 @@ class ChatAssistantState extends ChangeNotifier {
 
     try {
       final answer = await ApiService.askAI(trimmed, file.summary!);
-      messages.add(_ChatMessage(text: answer, fromBot: true));
+      messages.add(ChatMessage(text: answer, fromBot: true));
     } catch (e) {
-      messages.add(_ChatMessage(
+      messages.add(ChatMessage(
         text: "Sorry, I couldn't get an answer: ${e.toString().replaceFirst('Exception: ', '')}",
         fromBot: true,
       ));
@@ -155,6 +156,9 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
   late final Animation<double> _chatScale;
   late final Animation<double> _chatFade;
 
+  Timer? _introBubbleTimer;
+  Timer? _introBubbleHideTimer;
+
   final _controller = TextEditingController();
 
   @override
@@ -195,11 +199,13 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
 
     if (!_chat.isOpen && !_chat.hasShownIntroBubble) {
       _chat.hasShownIntroBubble = true;
-      Future.delayed(const Duration(milliseconds: 1200), () {
-        if (mounted && !_chat.isOpen) setState(() => _showBubble = true);
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _showBubble = false);
-        });
+      _introBubbleTimer = Timer(const Duration(milliseconds: 1200), () {
+        if (mounted && !_chat.isOpen) {
+          setState(() => _showBubble = true);
+          _introBubbleHideTimer = Timer(const Duration(seconds: 4), () {
+            if (mounted) setState(() => _showBubble = false);
+          });
+        }
       });
     }
   }
@@ -216,6 +222,8 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
 
   @override
   void dispose() {
+    _introBubbleTimer?.cancel();
+    _introBubbleHideTimer?.cancel();
     _chat.removeListener(_onChatChanged);
     _controller.dispose();
     _snapController.dispose();
@@ -390,7 +398,7 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
                   border: Border.all(color: Colors.white70, width: 2),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(_isDragging ? 0.30 : 0.16),
+                      color: Colors.black.withValues(alpha: _isDragging ? 0.30 : 0.16),
                       blurRadius: _isDragging ? 24 : 14,
                       offset: Offset(0, _isDragging ? 10 : 6),
                     ),
