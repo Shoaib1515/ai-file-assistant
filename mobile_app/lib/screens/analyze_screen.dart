@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/file_item.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../utils/file_saver.dart';
 import '../widgets/app_bottom_nav.dart';
 import '../widgets/chat_assistant_fab.dart';
 import 'edit_screen.dart';
@@ -39,6 +42,7 @@ class AnalyzeScreen extends StatefulWidget {
 class _AnalyzeScreenState extends State<AnalyzeScreen> {
   int _navIndex = 1;
   bool _isLoading = true;
+  bool _isAutoStructuring = false;
   String? _errorMessage;
   Map<String, dynamic>? _report;
 
@@ -94,6 +98,386 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             : message;
       });
     }
+  }
+
+  Future<void> _runAutoStructure() async {
+    final file = widget.file;
+    if (file == null) return;
+
+    setState(() => _isAutoStructuring = true);
+
+    try {
+      final result = await ApiService.autoStructureFile(
+        filePath: file.filePath,
+        fileName: file.name,
+        fileId: file.fileId,
+      );
+
+      if (!mounted) return;
+      setState(() => _isAutoStructuring = false);
+      _showStructuredResultSheet(result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isAutoStructuring = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Auto-structuring failed: ${e.toString().replaceFirst("Exception: ", "")}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _showStructuredResultSheet(Map<String, dynamic> result) {
+    final isDark = context.isDarkMode;
+    final initialScore = (result['initial_health_score'] as num?)?.toDouble() ?? 0.0;
+    final structuredScore = (result['structured_health_score'] as num?)?.toDouble() ?? 100.0;
+    final placeholdersCount = result['placeholders_cleaned'] ?? 0;
+    final typesCount = result['types_fixed'] ?? 0;
+    final whitespaceCount = result['whitespace_trimmed'] ?? 0;
+    final duplicatesCount = result['duplicates_removed'] ?? 0;
+    final columnsRenamed = (result['columns_renamed'] as List<dynamic>?) ?? [];
+    final samplePreview = (result['sample_preview'] as List<dynamic>?) ?? [];
+    final columns = (result['columns'] as List<dynamic>?) ?? [];
+    final csvContent = result['csv_content'] as String? ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1F24) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          border: Border.all(color: isDark ? const Color(0xFF2E3038) : Colors.white),
+        ),
+        child: Column(
+          children: [
+            // Drag handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF383844) : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4F46E5).withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Color(0xFF4F46E5), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'AI Structured & Cleaned Dataset',
+                          style: AppTextStyles.labelMd.copyWith(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                          ),
+                        ),
+                        Text(
+                          '${result['total_rows']} rows · ${result['total_columns']} standard columns',
+                          style: AppTextStyles.bodySm.copyWith(
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: isDark ? Colors.white70 : Colors.black54),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // Content
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(20),
+                children: [
+                  // Score Jump Banner
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                            : [const Color(0xFFECFDF5), const Color(0xFFF0FDF4)],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFF86EFAC),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'Before',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? const Color(0xFFA5A4B5) : const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${initialScore.toStringAsFixed(0)}%',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Icon(Icons.arrow_forward_rounded, color: Color(0xFF10B981), size: 26),
+                        Column(
+                          children: [
+                            Text(
+                              'After (Structured)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? const Color(0xFFA5A4B5) : const Color(0xFF64748B),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${structuredScore.toStringAsFixed(0)}% ✨',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Metrics Wrap
+                  Text(
+                    'TRANSFORMATIONS PERFORMED',
+                    style: AppTextStyles.labelSm.copyWith(
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? const Color(0xFF8183F5) : AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _metricBadge('🧹 $placeholdersCount Placeholders Cleaned', const Color(0xFF10B981), isDark),
+                      _metricBadge('🏷️ ${columnsRenamed.length} Headers Renamed', const Color(0xFF3B82F6), isDark),
+                      _metricBadge('⚡ $typesCount Types Coerced', const Color(0xFFF59E0B), isDark),
+                      _metricBadge('✂️ $whitespaceCount Spaces Trimmed', const Color(0xFF8B5CF6), isDark),
+                      if (duplicatesCount > 0)
+                        _metricBadge('🗑️ $duplicatesCount Duplicates Removed', const Color(0xFFEC4899), isDark),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Renamed Headers Chips
+                  if (columnsRenamed.isNotEmpty) ...[
+                    Text(
+                      'STANDARDIZED HEADERS',
+                      style: AppTextStyles.labelSm.copyWith(
+                        letterSpacing: 1.0,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? const Color(0xFF8183F5) : AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: columnsRenamed.map((c) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF282930) : const Color(0xFFEEF2FF),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF383844) : const Color(0xFFC7D2FE),
+                            ),
+                          ),
+                          child: Text(
+                            '${c['old']} ➔ ${c['new']}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? const Color(0xFFC7D2FE) : const Color(0xFF3730A3),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Data Preview Table
+                  Text(
+                    'CLEAN STRUCTURED DATA PREVIEW',
+                    style: AppTextStyles.labelSm.copyWith(
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? const Color(0xFF8183F5) : AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (samplePreview.isNotEmpty && columns.isNotEmpty)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF18191E) : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark ? const Color(0xFF2E3038) : Colors.grey.shade200,
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          headingRowHeight: 40,
+                          dataRowMinHeight: 36,
+                          dataRowMaxHeight: 40,
+                          headingTextStyle: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                          ),
+                          columns: columns
+                              .map((c) => DataColumn(label: Text(c.toString())))
+                              .toList(),
+                          rows: samplePreview.map((row) {
+                            final rowMap = row as Map<String, dynamic>;
+                            return DataRow(
+                              cells: columns.map((col) {
+                                final val = rowMap[col]?.toString() ?? '';
+                                return DataCell(
+                                  Text(
+                                    val,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? const Color(0xFFA5A4B5) : Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+            // Bottom Action Bar
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E1F24) : Colors.white,
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? const Color(0xFF2E3038) : Colors.grey.shade200,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _runAnalysis();
+                      },
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Re-Analyze'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xxl)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        if (csvContent.isNotEmpty) {
+                          final bytes = Uint8List.fromList(utf8.encode(csvContent));
+                          final baseName = widget.file?.name.replaceAll(RegExp(r'\.[a-zA-Z0-9]+$'), '') ?? 'dataset';
+                          await FileSaver.saveFile(
+                            '${baseName}_structured.csv',
+                            bytes,
+                          );
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Saved ${baseName}_structured.csv successfully!'),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.download, size: 18),
+                      label: const Text('Download CSV'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4F46E5),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xxl)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _metricBadge(String text, Color color, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(isDark ? 0.2 : 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: isDark ? color.withOpacity(0.9) : color,
+        ),
+      ),
+    );
   }
 
   void _onNavTap(int index) {
@@ -373,6 +757,84 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [const Color(0xFF312E81), const Color(0xFF4338CA)]
+                  : [const Color(0xFF4F46E5), const Color(0xFF6366F1)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF4F46E5).withOpacity(isDark ? 0.4 : 0.25),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '1-Tap AI Auto-Structure',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Clean headers, placeholders & corrupted rows in 1 tap.',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _isAutoStructuring ? null : _runAutoStructure,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF4F46E5),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.full)),
+                  elevation: 0,
+                ),
+                child: _isAutoStructuring
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF4F46E5)),
+                      )
+                    : const Text(
+                        'Auto Clean',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
               ),
             ],
           ),

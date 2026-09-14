@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from app.api import auth, upload, ask, analyze, edit, files, file_actions
+from app.api import auth, upload, ask, analyze, edit, files, file_actions, auto_structure
 from app.db.database import engine, Base
 from app.models import user, file_record  # noqa: F401
 
@@ -21,6 +21,7 @@ app.include_router(auth.router)
 app.include_router(upload.router)
 app.include_router(ask.router)
 app.include_router(analyze.router)
+app.include_router(auto_structure.router)
 app.include_router(edit.router)
 app.include_router(files.router)
 app.include_router(file_actions.router)

@@ -256,6 +256,51 @@ class ApiService {
     }
   }
 
+  /// 1-Tap Autonomous AI Structuring & Data Cleaning
+  static Future<Map<String, dynamic>> autoStructureFile({
+    String? filePath,
+    Uint8List? fileBytes,
+    required String fileName,
+    int? fileId,
+  }) async {
+    if (fileId != null) {
+      final uri = Uri.parse("$baseUrl/auto-structure/$fileId");
+      final headers = await _authHeaders(json: true);
+      final response = await http.post(uri, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Auto-structuring failed');
+      }
+    }
+
+    final uri = Uri.parse("$baseUrl/auto-structure");
+    final request = http.MultipartRequest('POST', uri);
+    final headers = await _authHeaders(json: false);
+    request.headers.addAll(headers);
+
+    if (fileBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Auto-structuring failed');
+    }
+  }
+
   /// Sends a question along with optional file summary to the AI.
   static Future<String> askAI(
     String question, [

@@ -1,20 +1,35 @@
 # 🤖 AI File Assistant
 
-A modern, cross-platform mobile application and FastAPI backend that enables natural-language dataset analysis, AI-powered Q&A, and safe cell-level dataset editing for CSV and Excel files using Google Gemini Flash AI.
+A modern, cross-platform mobile application and FastAPI backend that enables natural-language dataset analysis, AI-powered Q&A, autonomous 1-tap data cleaning/structuring, and safe cell-level dataset editing for CSV and Excel files using Google Gemini Flash AI.
 
 ---
 
 ## 🌟 Key Features
 
-- 📂 **Multi-Format Dataset Upload**: Accepts `.csv` and `.xlsx`/`.xls` datasets up to 10MB.
-- 📊 **Automated Health Diagnostic**: Instantly detects missing values per column and duplicate rows with capped sample previews.
-- 💬 **Context-Aware AI Chatbot**: Interactive Q&A on dataset metrics powered by Google Gemini AI (`gemini-flash-latest`).
-- ✍️ **AI-Assisted Safe Editing**: 
-  - User submits natural language edit instructions (e.g. *"Format phone numbers with country code"*).
-  - Gemini AI proposes JSON cell-level changes.
-  - User reviews/approves changes before Pandas writes back updated `.xlsx` output.
-- 💾 **Database & Disk Persistence**: Records dataset metadata in SQLite/SQLAlchemy and persists files on disk for session restore.
-- 🔄 **Re-analysis Without Re-upload**: Full backend file-id endpoints (`/files/{file_id}/*`) for analyzing and editing stored files across app restarts.
+- ⚡ **1-Tap AI Auto-Structure & Cleaning**:
+  - Automatically transforms messy, unstructured datasets into clean, standardized tables.
+  - Fixes irregular headers (`user_first_name` / `userFirstName` ➔ `User First Name`).
+  - Removes placeholder anomalies (`'N/A'`, `'null'`, `'-'`, `'?'`, `'none'`).
+  - Intelligently coerces numeric types, standardizes ISO 8601 dates, trims whitespace, and eliminates duplicate rows.
+  - Provides a **Before vs After health comparison modal** and 1-tap **Clean CSV Download**.
+
+- 📊 **Intelligent Data Health Diagnostic**:
+  - Calculates a 4-factor health score: **Completeness (40%)**, **Uniqueness (25%)**, **Consistency (20%)**, and **Cleanliness (15%)**.
+  - Displays color-coded diagnostic badges (✨ Excellent `90-100%`, ⚠️ Good `70-89%`, 🔴 Needs Attention `<70%`).
+
+- 🌙 **Full Dynamic Dark Mode**:
+  - Seamless dark and light theme switching across all 5 screens (`Home`, `Analyze`, `Edit`, `History`, `Settings`) and widgets (`FileCard`, `AppBottomNav`, `ChatFab`).
+
+- 💬 **Context-Aware AI Chatbot**:
+  - Interactive dataset Q&A and instant insights powered by Google Gemini Flash AI.
+
+- ✍️ **AI-Assisted Safe Dataset Editing**:
+  - Natural language instruction edits (e.g., *"Convert all city names to uppercase"*).
+  - AI proposes cell-level JSON changes with user approval before Pandas writes back `.xlsx`.
+
+- 📂 **Multi-Format & Persistent Storage**:
+  - Supports `.csv` and `.xlsx`/`.xls` up to 10MB.
+  - SQLite/PostgreSQL metadata persistence with on-disk storage for instant re-analysis without re-uploading.
 
 ---
 
@@ -23,21 +38,29 @@ A modern, cross-platform mobile application and FastAPI backend that enables nat
 | Layer | Technology |
 | :--- | :--- |
 | **Backend Framework** | FastAPI (Python 3.10+) |
-| **Data Engine** | Pandas, NumPy, OpenPyXL |
+| **Data Cleaning Engine** | Pandas, NumPy, OpenPyXL, Autonomous Structurer |
 | **AI Integration** | Google GenAI SDK (`google-genai` / `gemini-flash-latest`) |
-| **Database** | SQLite + SQLAlchemy ORM |
+| **Database & ORM** | SQLite / PostgreSQL + SQLAlchemy ORM |
 | **Mobile Client** | Flutter / Dart (^3.12.2) |
-| **UI Design System** | Material 3, Custom AppTheme, Custom Color Tokens |
-| **Networking** | `http` Dart Package |
+| **UI Design System** | Material 3, Dynamic Theme Provider (Dark/Light) |
+| **Automated Testing** | Pytest (45/45 tests passing - 100% green) |
+
+---
+
+## 🔌 API Endpoints Summary
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/auto-structure` | 1-Tap clean & structure uploaded file (Multipart) |
+| `POST` | `/auto-structure/{file_id}` | 1-Tap clean & structure saved library file |
+| `POST` | `/analyze` | Comprehensive data diagnostic & health scoring |
+| `POST` | `/ask` | Contextual Gemini AI Q&A |
+| `POST` | `/edit` | Cell-level AI dataset transformations |
+| `GET` | `/files` | List user's stored dataset records |
 
 ---
 
 ## 🚀 Quick Start Guide
-
-### Prerequisites
-- Python 3.10+
-- Flutter SDK 3.12+
-- Google Gemini API Key ([Get Key Here](https://aistudio.google.com/))
 
 ### 1. Backend Server Setup
 ```bash
@@ -51,46 +74,30 @@ python -m venv venv
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment variables in .env
-# DATABASE_URL=sqlite:///./sql_app.db
-# GEMINI_API_KEY=your_actual_gemini_api_key
-
 # Start FastAPI server
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
-*API documentation available at `http://localhost:8000/docs`*
+*Interactive Swagger documentation available at `http://localhost:8000/docs`*
 
 ### 2. Mobile App Setup
 ```bash
 cd mobile_app
 
-# Install dependencies
+# Install Flutter dependencies
 flutter pub get
 
-# Configure backend IP address in lib/services/api_service.dart
-# static const String baseUrl = "http://<YOUR_LOCAL_IP>:8000";
-
-# Launch application
+# Launch mobile application
 flutter run
 ```
 
 ---
 
-## 📚 Complete Project Documentation Suite
-
-All detailed project documentation files are ready:
-
-- 📑 **[Project Handover Document](./project_handover_document.md)**: Architectural specifications, DB schemas, sequence diagrams, and environment setup.
-- 📁 **[Project File Structure & Code Breakdown](./project_file_structure.md)**: Exhaustive breakdown of every backend python module and mobile screen.
-- 📊 **[Master Project Status & Production Roadmap](./project_status_roadmap.md)**: Full completion scorecard (100% MVP functional), gap matrix, and release roadmap.
-
----
-
-## 🔒 Security & Performance Policies
+## 🔒 Security & Quality Policies
 
 - Maximum file upload limit: **10MB**.
 - Gemini API retries: 3 attempts with exponential backoff on server rate limits.
-- Leading zeros preservation: Automated string casting in `editor.py` for numeric formatting.
+- Header collision safety: Automatic disambiguation for duplicate columns.
+- Test Coverage: 45 automated unit and integration tests passing.
 
 ---
 
