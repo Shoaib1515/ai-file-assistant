@@ -197,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
       type: FileType.custom,
       allowedExtensions: ['csv', 'xlsx', 'xls'],
     );
-    if (files == null || files.isEmpty) return;
+    if (files.isEmpty) return;
     final picked = files.first;
     final String? path = picked.path;
     final Uint8List bytes = await picked.readAsBytes();
