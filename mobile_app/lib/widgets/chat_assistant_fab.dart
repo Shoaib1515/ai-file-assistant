@@ -806,7 +806,6 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
       // 3. Check for bullet points (e.g. - item, * item, • item, 1. item)
       final bulletMatch = RegExp(r'^(\*|-|•|\d+\.)\s+(.*)$').firstMatch(trimmed);
       if (bulletMatch != null) {
-        final marker = bulletMatch.group(1)!;
         final content = bulletMatch.group(2)!;
         widgets.add(
           Padding(
