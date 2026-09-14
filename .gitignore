@@ -43,3 +43,7 @@ backend/storage/
 .agents/
 graphify-out/
 
+# Sample / Local Test Files
+test_messy_data.csv
+*.csv.bak
+

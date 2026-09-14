@@ -5,14 +5,42 @@ import '../theme/app_theme.dart';
 
 const double _kButtonSize = 64;
 const double _kChatWidth = 310;
-const double _kChatHeight = 420;
+const double _kChatHeight = 440;
 const double _kMargin = 12;
 const double _kTapMoveThreshold = 8;
 
-class _ChatMessage {
+final List<Map<String, String>> _chatSuggestions = const [
+  {
+    'icon': '📊',
+    'label': 'Summary',
+    'prompt': 'Summarize key insights and stats from this file.',
+  },
+  {
+    'icon': '⚠️',
+    'label': 'Find Issues',
+    'prompt': 'What columns have missing values, anomalies, or errors?',
+  },
+  {
+    'icon': '💡',
+    'label': 'Cleaning Tips',
+    'prompt': 'Suggest the best cleaning and transformation steps for this data.',
+  },
+  {
+    'icon': '🇵🇰',
+    'label': 'Roman Urdu',
+    'prompt': 'Is dataset ka main summary aur stats Roman Urdu mein samjha dein.',
+  },
+  {
+    'icon': '📈',
+    'label': 'Key Stats',
+    'prompt': 'What are the main numeric statistics and column types in this file?',
+  },
+];
+
+class ChatMessage {
   final String text;
   final bool fromBot;
-  const _ChatMessage({required this.text, required this.fromBot});
+  const ChatMessage({required this.text, required this.fromBot});
 }
 
 /// App-wide chat state. This is a singleton (not per-widget State), so the
@@ -35,8 +63,8 @@ class ChatAssistantState extends ChangeNotifier {
   /// assistant answers locally instead of calling the backend.
   FileItem? _currentFile;
 
-  final List<_ChatMessage> messages = [
-    const _ChatMessage(
+  final List<ChatMessage> messages = [
+    const ChatMessage(
       text: "Hello! How can I help you with your files today?",
       fromBot: true,
     ),
@@ -65,14 +93,14 @@ class ChatAssistantState extends ChangeNotifier {
     final trimmed = text.trim();
     if (trimmed.isEmpty || isSending) return;
 
-    messages.add(_ChatMessage(text: trimmed, fromBot: false));
+    messages.add(ChatMessage(text: trimmed, fromBot: false));
     notifyListeners();
 
     final file = _currentFile;
     if (file == null || file.summary == null) {
       // No file open right now — the backend needs a file summary to
       // answer anything meaningful, so don't call it with nothing.
-      messages.add(const _ChatMessage(
+      messages.add(const ChatMessage(
         text: "Open a file from Home first, then ask me anything about it.",
         fromBot: true,
       ));
@@ -85,9 +113,9 @@ class ChatAssistantState extends ChangeNotifier {
 
     try {
       final answer = await ApiService.askAI(trimmed, file.summary!);
-      messages.add(_ChatMessage(text: answer, fromBot: true));
+      messages.add(ChatMessage(text: answer, fromBot: true));
     } catch (e) {
-      messages.add(_ChatMessage(
+      messages.add(ChatMessage(
         text: "Sorry, I couldn't get an answer: ${e.toString().replaceFirst('Exception: ', '')}",
         fromBot: true,
       ));
@@ -661,6 +689,56 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
                   );
                 },
               ),
+            ),
+          ),
+          // Quick Suggestion Chips Bar
+          Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _chatSuggestions.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (context, idx) {
+                final item = _chatSuggestions[idx];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: _chat.isSending
+                      ? null
+                      : () {
+                          _controller.text = item['prompt']!;
+                          _send();
+                        },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(item['icon']!, style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 4),
+                        Text(
+                          item['label']!,
+                          style: AppTextStyles.bodySm.copyWith(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           // Input Area
