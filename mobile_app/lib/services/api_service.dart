@@ -228,12 +228,17 @@ class ApiService {
     String? filePath,
     Uint8List? fileBytes,
     required String fileName,
+    String? sheetName,
   }) async {
     final uri = Uri.parse("$baseUrl/analyze");
     final request = http.MultipartRequest('POST', uri);
 
     final headers = await _authHeaders(json: false);
     request.headers.addAll(headers);
+
+    if (sheetName != null) {
+      request.fields['sheet_name'] = sheetName;
+    }
 
     if (fileBytes != null) {
       request.files.add(
@@ -324,6 +329,57 @@ class ApiService {
     }
   }
 
+  /// Fetches column headers and sample data rows for interactive spreadsheet viewing.
+  static Future<Map<String, dynamic>> getFilePreview({
+    int? fileId,
+    String? filePath,
+    Uint8List? fileBytes,
+    required String fileName,
+    String? sheetName,
+  }) async {
+    if (fileId != null) {
+      final query = sheetName != null ? "?sheet_name=${Uri.encodeComponent(sheetName)}" : "";
+      final uri = Uri.parse("$baseUrl/files/$fileId/preview$query");
+      final headers = await _authHeaders(json: true);
+      final response = await http.get(uri, headers: headers);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to load preview');
+      }
+    }
+
+    final uri = Uri.parse("$baseUrl/preview");
+    final request = http.MultipartRequest('POST', uri);
+    final headers = await _authHeaders(json: false);
+    request.headers.addAll(headers);
+
+    if (sheetName != null) {
+      request.fields['sheet_name'] = sheetName;
+    }
+
+    if (fileBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+      );
+    }
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      final error = jsonDecode(response.body);
+      throw Exception(error['detail'] ?? 'Failed to load preview');
+    }
+  }
+
   /// Sends an instruction and gets back a list of proposed changes.
   static Future<List<dynamic>> suggestEdit(
     String filePath,
@@ -399,8 +455,9 @@ class ApiService {
   }
 
   /// Re-analyzes a file stored on the backend.
-  static Future<Map<String, dynamic>> analyzeStoredFile(int fileId) async {
-    final uri = Uri.parse("$baseUrl/files/$fileId/analyze");
+  static Future<Map<String, dynamic>> analyzeStoredFile(int fileId, {String? sheetName}) async {
+    final query = sheetName != null ? "?sheet_name=${Uri.encodeComponent(sheetName)}" : "";
+    final uri = Uri.parse("$baseUrl/files/$fileId/analyze$query");
     final headers = await _authHeaders(json: true);
     final response = await http.post(uri, headers: headers);
 

@@ -108,13 +108,35 @@ def _parse_csv_robust(contents: bytes) -> pd.DataFrame:
     return df
 
 
-def parse_file(filename: str, contents: bytes) -> pd.DataFrame:
+def get_sheet_names(filename: str, contents: bytes) -> list[str]:
+    """
+    Returns list of sheet names for Excel workbooks. Returns empty list for CSVs.
+    """
+    filename_lower = filename.lower()
+    if filename_lower.endswith('.xlsx'):
+        try:
+            excel = pd.ExcelFile(io.BytesIO(contents), engine='openpyxl')
+            return [str(s) for s in excel.sheet_names]
+        except Exception:
+            return []
+    elif filename_lower.endswith('.xls'):
+        try:
+            excel = pd.ExcelFile(io.BytesIO(contents), engine='xlrd')
+            return [str(s) for s in excel.sheet_names]
+        except Exception:
+            return []
+    return []
+
+
+def parse_file(filename: str, contents: bytes, sheet_name: str | int | None = 0) -> pd.DataFrame:
     """
     Parses an uploaded file (CSV or Excel) and returns a Pandas DataFrame.
     Normalizes extensions to lowercase (.csv, .xlsx, .xls) and enforces row/col limits.
+    Supports specific sheet_name for Excel workbooks.
     Raises ValueError with a clear user-facing message on any parsing or validation failure.
     """
     filename_lower = filename.lower()
+    target_sheet = 0 if sheet_name is None else sheet_name
 
     if filename_lower.endswith('.csv'):
         try:
@@ -123,14 +145,14 @@ def parse_file(filename: str, contents: bytes) -> pd.DataFrame:
             raise ValueError(f"Could not read this CSV file: {str(e)}")
     elif filename_lower.endswith('.xlsx'):
         try:
-            df = pd.read_excel(io.BytesIO(contents), engine='openpyxl')
+            df = pd.read_excel(io.BytesIO(contents), engine='openpyxl', sheet_name=target_sheet)
         except Exception as e:
-            raise ValueError(f"Could not read this XLSX file: {str(e)}")
+            raise ValueError(f"Could not read sheet '{target_sheet}' in this XLSX file: {str(e)}")
     elif filename_lower.endswith('.xls'):
         try:
-            df = pd.read_excel(io.BytesIO(contents), engine='xlrd')
+            df = pd.read_excel(io.BytesIO(contents), engine='xlrd', sheet_name=target_sheet)
         except Exception as e:
-            raise ValueError(f"Could not read this legacy XLS file: {str(e)}")
+            raise ValueError(f"Could not read sheet '{target_sheet}' in this legacy XLS file: {str(e)}")
     else:
         raise ValueError("Only CSV (.csv) and Excel (.xlsx, .xls) files are supported.")
 

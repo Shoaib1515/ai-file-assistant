@@ -6,12 +6,13 @@ from app.db.database import get_db
 from app.models.file_record import FileRecord
 from app.models.user import User
 from app.core.security import get_current_user
-from app.services.file_parser import parse_file
+from app.services.file_parser import parse_file, get_sheet_names
 from app.services.analyzer import analyze_dataframe
 from app.services.ai_service import suggest_edit
 from app.services.editor import apply_changes, dataframe_to_excel_bytes
 import io
 import os
+import pandas as pd
 
 router = APIRouter()
 
@@ -42,20 +43,58 @@ def _read_stored_bytes(record: FileRecord) -> bytes:
 @router.post("/files/{file_id}/analyze")
 def analyze_stored_file(
     file_id: int,
+    sheet_name: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Re-analyzes a previously uploaded file, using the copy saved on
-    disk at upload time — no need to re-pick the file on the device.
+    disk at upload time — supports multi-sheet Excel files.
     """
     record = _load_file_record(file_id, current_user, db)
     contents = _read_stored_bytes(record)
+    sheet_names = get_sheet_names(record.filename, contents)
+    active_sheet = sheet_name or (sheet_names[0] if sheet_names else None)
 
-    df = parse_file(record.filename, contents)
+    df = parse_file(record.filename, contents, sheet_name=active_sheet)
     report = analyze_dataframe(df)
     report["filename"] = record.filename
+    report["sheet_names"] = sheet_names
+    report["active_sheet"] = active_sheet
     return report
+
+
+@router.get("/files/{file_id}/preview")
+def get_file_preview(
+    file_id: int,
+    limit: int = 100,
+    sheet_name: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns column headers, total rows, and capped preview rows for interactive spreadsheet viewing.
+    Supports multi-sheet Excel workbooks.
+    """
+    record = _load_file_record(file_id, current_user, db)
+    contents = _read_stored_bytes(record)
+    sheet_names = get_sheet_names(record.filename, contents)
+    active_sheet = sheet_name or (sheet_names[0] if sheet_names else None)
+
+    df = parse_file(record.filename, contents, sheet_name=active_sheet)
+
+    sample_df = df.head(limit)
+    rows = [
+        {"row_number": int(idx) + 1, **{str(k): ("" if pd.isna(v) else str(v)) for k, v in row.items()}}
+        for idx, row in zip(sample_df.index, sample_df.to_dict('records'))
+    ]
+    return {
+        "columns": [str(c) for c in df.columns],
+        "total_rows": len(df),
+        "preview_rows": rows,
+        "sheet_names": sheet_names,
+        "active_sheet": active_sheet,
+    }
 
 
 @router.post("/files/{file_id}/suggest-edit")

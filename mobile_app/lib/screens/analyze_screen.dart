@@ -45,6 +45,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   bool _isAutoStructuring = false;
   String? _errorMessage;
   Map<String, dynamic>? _report;
+  List<String> _sheetNames = [];
+  String? _activeSheet;
 
   @override
   void initState() {
@@ -59,7 +61,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
   }
 
-  Future<void> _runAnalysis() async {
+  Future<void> _runAnalysis({String? sheetName}) async {
     final file = widget.file!;
 
     setState(() {
@@ -74,10 +76,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         report = await ApiService.analyzeFile(
           filePath: file.filePath,
           fileName: file.name,
+          sheetName: sheetName ?? _activeSheet,
         );
       } else if (file.fileId != null) {
         // Restored from history — use the backend's stored copy.
-        report = await ApiService.analyzeStoredFile(file.fileId!);
+        report = await ApiService.analyzeStoredFile(
+          file.fileId!,
+          sheetName: sheetName ?? _activeSheet,
+        );
       } else {
         setState(() {
           _isLoading = false;
@@ -85,8 +91,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         });
         return;
       }
+
+      final sheets = (report['sheet_names'] as List<dynamic>?)?.map((s) => s.toString()).toList() ?? [];
+      final active = report['active_sheet']?.toString() ?? (sheets.isNotEmpty ? sheets.first : null);
+
       setState(() {
         _report = report;
+        _sheetNames = sheets;
+        _activeSheet = active;
         _isLoading = false;
       });
     } catch (e) {
@@ -531,6 +543,107 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     );
   }
 
+  Widget _buildSheetSelectorBar(bool isDark) {
+    if (_sheetNames.length <= 1) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tab_rounded, size: 14, color: AppColors.primary),
+              const SizedBox(width: 6),
+              Text(
+                'Excel Sheets (${_sheetNames.length}):',
+                style: AppTextStyles.bodySm.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _sheetNames.map((sheet) {
+                final isSelected = sheet == _activeSheet;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
+                      if (isSelected) return;
+                      _runAnalysis(sheetName: sheet);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary
+                            : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9)),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : (isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1)),
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.25),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 13,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            sheet,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : AppColors.onSurface),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
     final isDark = context.isDarkMode;
     if (widget.file == null) {
@@ -644,6 +757,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
       children: [
+        if (_sheetNames.length > 1) _buildSheetSelectorBar(isDark),
         Text('Quality report generated just now.',
             style: AppTextStyles.bodySm.copyWith(
               color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,

@@ -33,6 +33,10 @@ All core features—including JWT authentication, file lifecycle management (upl
 | **Frontend** | **Auth & Session Persistence** | Token persistence with SharedPreferences, auto-login, secure logout | ✅ Implemented |
 | **Frontend** | **Dynamic Dark Mode System** | Global theme toggle across 5 screens (`Home`, `Analyze`, `Edit`, `History`, `Settings`) + custom widgets | ✅ Implemented |
 | **Frontend** | **1-Tap Auto-Structure UI** | Glowing action card, animated modal sheet, Before vs After score comparison, clean data preview, 1-tap CSV download | ✅ Implemented |
+| **Frontend** | **Interactive Spreadsheet UI** | Direct cell tap-to-edit dialog, live green highlight badges, reset button | ✅ Implemented |
+| **Frontend** | **Quick Search / Filter Bar** | Instant filtering across thousands of rows by row number, name, ID, or value | ✅ Implemented |
+| **Frontend / Backend** | **Excel Multi-Sheet Tabs** | Detection and switching between worksheets (`Sheet1`, `Sales`, etc.) on Analyze & Edit screens | ✅ Implemented |
+| **Frontend / Backend** | **Dual Save Options Dialog** | Interactive choice: Overwrite Original File in-place or Save as New File export copy | ✅ Implemented |
 | **Frontend** | **Interactive Dataset UI** | Health badges, missing value breakdowns, column stats, sample data table preview | ✅ Implemented |
 | **Frontend** | **Export & File Saver** | Direct `.xlsx` and `.csv` export to device storage with multiplatform support | ✅ Implemented |
 
@@ -63,9 +67,9 @@ Recommended features for subsequent major versions:
 
 | Test Suite | Total Tests | Passed | Failed | Health |
 | :--- | :--- | :--- | :--- | :--- |
-| **Backend (`pytest`)** | 45 | 45 | 0 | 100% Pass |
+| **Backend (`pytest`)** | 47 | 47 | 0 | 100% Pass |
 | **Frontend (`flutter analyze`)** | - | Clean | 0 Errors | 100% Pass |
-| **Total Automated Verification** | **45** | **45** | **0** | **100% Green** |
+| **Total Automated Verification** | **47** | **47** | **0** | **100% Green** |
 
 ---
 

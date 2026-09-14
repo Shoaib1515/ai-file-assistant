@@ -23,12 +23,15 @@ A modern, cross-platform mobile application and FastAPI backend that enables nat
 - 💬 **Context-Aware AI Chatbot**:
   - Interactive dataset Q&A and instant insights powered by Google Gemini Flash AI.
 
-- ✍️ **AI-Assisted Safe Dataset Editing**:
-  - Natural language instruction edits (e.g., *"Convert all city names to uppercase"*).
-  - AI proposes cell-level JSON changes with user approval before Pandas writes back `.xlsx`.
+- ✍️ **Interactive Spreadsheet Editor & Safe AI Editing**:
+  - **Live Table Grid & Cell Tap-to-Edit**: Directly view dataset rows and tap any cell to edit via a popup dialog without writing prompts.
+  - **Quick Search & Filter Bar**: Instant real-time search by row number, name, ID, or any value to isolate and edit specific records.
+  - **Excel Sheet Selector Tabs**: Switch seamlessly between multiple worksheets (`Sheet1`, `Sales`, `Expenses`, etc.).
+  - **Dual Save Options**: Choose between **Overwrite Original File (In-Place)** or **Save as New File (Export Copy)**.
+  - **AI Suggestions & Bulk Actions**: Optional prompt-driven edits and 1-tap cleaning chips (Capitalize, Trim Spaces, Round Numbers).
 
 - 📂 **Multi-Format & Persistent Storage**:
-  - Supports `.csv` and `.xlsx`/`.xls` up to 10MB.
+  - Supports `.csv` and `.xlsx`/`.xls` (including multi-sheet workbooks) up to 10MB.
   - SQLite/PostgreSQL metadata persistence with on-disk storage for instant re-analysis without re-uploading.
 
 ---
@@ -43,7 +46,7 @@ A modern, cross-platform mobile application and FastAPI backend that enables nat
 | **Database & ORM** | SQLite / PostgreSQL + SQLAlchemy ORM |
 | **Mobile Client** | Flutter / Dart (^3.12.2) |
 | **UI Design System** | Material 3, Dynamic Theme Provider (Dark/Light) |
-| **Automated Testing** | Pytest (45/45 tests passing - 100% green) |
+| **Automated Testing** | Pytest (47/47 tests passing - 100% green) |
 
 ---
 
@@ -53,7 +56,9 @@ A modern, cross-platform mobile application and FastAPI backend that enables nat
 | :--- | :--- | :--- |
 | `POST` | `/auto-structure` | 1-Tap clean & structure uploaded file (Multipart) |
 | `POST` | `/auto-structure/{file_id}` | 1-Tap clean & structure saved library file |
-| `POST` | `/analyze` | Comprehensive data diagnostic & health scoring |
+| `POST` | `/analyze` | Comprehensive data diagnostic & health scoring (Multi-sheet) |
+| `GET` | `/files/{file_id}/preview` | Spreadsheet table preview rows & sheet names |
+| `POST` | `/preview` | Direct uploaded file spreadsheet preview rows |
 | `POST` | `/ask` | Contextual Gemini AI Q&A |
 | `POST` | `/edit` | Cell-level AI dataset transformations |
 | `GET` | `/files` | List user's stored dataset records |

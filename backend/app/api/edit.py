@@ -2,16 +2,51 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from app.models.user import User
 from app.core.security import get_current_user
 from fastapi.responses import StreamingResponse
-from app.services.file_parser import parse_file
+from app.services.file_parser import parse_file, get_sheet_names
 from app.services.ai_service import suggest_edit
 from app.services.editor import apply_changes, dataframe_to_excel_bytes
 from app.core.validation import read_file_bounded_chunks
 import json
 import io
+import pandas as pd
 
 router = APIRouter()
 
 SAMPLE_SIZE_FOR_AI = 50
+
+
+@router.post("/preview")
+async def preview_uploaded_file(
+    file: UploadFile = File(...),
+    limit: int = 100,
+    sheet_name: str | None = Form(None),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Returns column headers, total rows, and capped preview rows for direct file uploads.
+    Supports multi-sheet Excel workbooks.
+    """
+    contents = await read_file_bounded_chunks(file)
+    sheet_names = get_sheet_names(file.filename, contents)
+    active_sheet = sheet_name or (sheet_names[0] if sheet_names else None)
+
+    try:
+        df = parse_file(file.filename, contents, sheet_name=active_sheet)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    sample_df = df.head(limit)
+    rows = [
+        {"row_number": int(idx) + 1, **{str(k): ("" if pd.isna(v) else str(v)) for k, v in row.items()}}
+        for idx, row in zip(sample_df.index, sample_df.to_dict('records'))
+    ]
+    return {
+        "columns": [str(c) for c in df.columns],
+        "total_rows": len(df),
+        "preview_rows": rows,
+        "sheet_names": sheet_names,
+        "active_sheet": active_sheet,
+    }
 
 
 @router.post("/suggest-edit")

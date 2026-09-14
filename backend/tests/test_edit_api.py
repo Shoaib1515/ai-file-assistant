@@ -41,3 +41,25 @@ def test_suggest_edit_api(client):
     assert response.status_code == 200
     data = response.json()
     assert "proposed_changes" in data
+
+
+def test_preview_uploaded_file_api(client):
+    client.post("/auth/register", json={"email": "preview_user@e.com", "password": "password123"})
+    login_resp = client.post("/auth/login", json={"email": "preview_user@e.com", "password": "password123"})
+    token = login_resp.json()["access_token"]
+
+    file_content = b"Name,Age,City\nAli,24,Lahore\nSara,28,Karachi"
+    file = io.BytesIO(file_content)
+
+    response = client.post(
+        "/preview",
+        files={"file": ("users.csv", file, "text/csv")},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["columns"] == ["Name", "Age", "City"]
+    assert data["total_rows"] == 2
+    assert len(data["preview_rows"]) == 2
+    assert data["preview_rows"][0]["Name"] == "Ali"
