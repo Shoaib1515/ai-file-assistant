@@ -156,7 +156,7 @@ class FileItem {
   /// only place FileItem instances should be created once a file has
   /// actually gone through the backend.
   factory FileItem.fromUploadResponse({
-    required String filePath,
+    String? filePath,
     required String fileName,
     required String sizeLabel,
     required Map<String, dynamic> summary,

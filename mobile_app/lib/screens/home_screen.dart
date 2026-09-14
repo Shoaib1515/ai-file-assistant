@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/file_item.dart';
@@ -21,10 +22,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _navIndex = 0;
   int _filterIndex = 0;
-  final _filters = const ['All', 'Recent', 'Shared', 'Favorites'];
+  final _filters = const ['All', 'Recent', 'Favorites', 'Excel', 'CSV', 'PDF'];
   final List<FileItem> _files = [];
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  String _displayName = 'User';
   bool _isUploading = false;
   bool _isLoadingHistory = true;
   String? _historyError;
@@ -33,13 +35,19 @@ class _HomeScreenState extends State<HomeScreen> {
     Iterable<FileItem> result;
     switch (_filterIndex) {
       case 1: // Recent
-        result = _files.where((f) => f.isRecent);
+        result = _files.where((f) => f.isRecent || f.timeLabel.toLowerCase().contains('just now') || f.timeLabel.toLowerCase().contains('m ago') || f.timeLabel.toLowerCase().contains('h ago') || f.timeLabel.toLowerCase().contains('1d ago'));
         break;
-      case 2: // Shared
-        result = _files.where((f) => f.isShared);
-        break;
-      case 3: // Favorites
+      case 2: // Favorites
         result = _files.where((f) => f.isFavorite);
+        break;
+      case 3: // Excel
+        result = _files.where((f) => f.kind == FileKind.excel && (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')));
+        break;
+      case 4: // CSV
+        result = _files.where((f) => f.name.toLowerCase().endsWith('.csv'));
+        break;
+      case 5: // PDF
+        result = _files.where((f) => f.kind == FileKind.pdf);
         break;
       default: // All
         result = _files;
@@ -54,10 +62,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _displayName = widget.userName;
+    _loadUserProfile();
     // No file is "open" while browsing the list — the chat assistant
     // should not try to answer questions grounded in a specific file here.
     ChatAssistantState.instance.setCurrentFile(null);
     _loadHistory();
+  }
+
+  Future<void> _loadUserProfile() async {
+    final cached = await ApiService.getUserProfile();
+    if (mounted && cached['name'] != null && cached['name']!.isNotEmpty) {
+      setState(() => _displayName = cached['name']!);
+    } else if (mounted && cached['email'] != null && cached['email']!.isNotEmpty) {
+      setState(() => _displayName = cached['email']!.split('@').first);
+    }
   }
 
   /// Restores the file list from the database so previously uploaded
@@ -70,13 +89,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final records = await ApiService.getAllFiles();
+      final favIds = await ApiService.getFavoriteIds();
+      if (!mounted) return;
       setState(() {
         _files
           ..clear()
-          ..addAll(records.map((r) => FileItem.fromHistoryRecord(r)));
+          ..addAll(records.map((r) {
+            final file = FileItem.fromHistoryRecord(r);
+            return file.copyWith(isFavorite: favIds.contains(file.id));
+          }));
         _isLoadingHistory = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoadingHistory = false;
         _historyError = e.toString().replaceFirst('Exception: ', '');
@@ -108,11 +133,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _toggleFavorite(FileItem file) {
+  Future<void> _toggleFavorite(FileItem file) async {
+    final newStatus = !file.isFavorite;
+    await ApiService.setFavoriteId(file.id, newStatus);
+    if (!mounted) return;
     setState(() {
       final index = _files.indexWhere((f) => f.id == file.id);
       if (index != -1) {
-        _files[index] = _files[index].copyWith(isFavorite: !_files[index].isFavorite);
+        _files[index] = _files[index].copyWith(isFavorite: newStatus);
       }
     });
   }
@@ -165,19 +193,24 @@ class _HomeScreenState extends State<HomeScreen> {
   /// real backend (POST /upload) and adds it to the list using the
   /// actual summary returned — no more fake "Just uploaded" placeholder.
   Future<void> _pickAndUploadFile() async {
-    final dynamic result = await FilePicker.pickFiles(
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv', 'xlsx', 'xls'],
     );
-    if (result == null || result.files.isEmpty || result.files.first.path == null) return;
-    final PlatformFile picked = result.files.first;
-    final path = picked.path!;
-    final sizeInBytes = await picked.length();
+    if (files == null || files.isEmpty) return;
+    final picked = files.first;
+    final String? path = picked.path;
+    final Uint8List bytes = await picked.readAsBytes();
+    final int sizeInBytes = await picked.length();
 
     setState(() => _isUploading = true);
 
     try {
-      final summary = await ApiService.uploadFile(path, picked.name);
+      final summary = await ApiService.uploadFile(
+        filePath: path,
+        fileBytes: bytes,
+        fileName: picked.name,
+      );
       final newFile = FileItem.fromUploadResponse(
         filePath: path,
         fileName: picked.name,
@@ -192,7 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${newFile.name} uploaded')),
+        SnackBar(content: Text('${newFile.name} uploaded successfully')),
       );
     } catch (e) {
       setState(() => _isUploading = false);
@@ -262,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Row(
                         children: [
-                          Text('Hello, ${widget.userName}! ',
+                          Text('Hello, $_displayName! ',
                               style: AppTextStyles.headlineXl.copyWith(fontSize: 26)),
                           const Text('👋', style: TextStyle(fontSize: 26)),
                         ],
@@ -306,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     separatorBuilder: (_, __) => const SizedBox(width: AppSpacing.sm),
                     itemBuilder: (context, i) {
                       final selected = i == _filterIndex;
-                      final isFavorites = i == 3;
+                      final isFavorites = _filters[i] == 'Favorites';
                       return ChoiceChip(
                         label: Text(_filters[i]),
                         selected: selected,

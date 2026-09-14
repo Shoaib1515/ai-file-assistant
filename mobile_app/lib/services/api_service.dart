@@ -1,11 +1,21 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl = "http://192.168.1.6:8000";
+  static String get baseUrl {
+    if (kIsWeb) {
+      return "http://localhost:8000";
+    }
+    return "http://192.168.1.3:8000";
+  }
+
   static const String _tokenKey = "jwt_token";
+  static const String _userEmailKey = "user_email";
+  static const String _userNameKey = "user_name";
+  static const String _favoritesKey = "favorite_file_ids";
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -17,9 +27,60 @@ class ApiService {
     await prefs.setString(_tokenKey, token);
   }
 
+  static Future<Set<String>> getFavoriteIds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = prefs.getStringList(_favoritesKey) ?? [];
+    return list.toSet();
+  }
+
+  static Future<void> setFavoriteId(String id, bool isFavorite) async {
+    final prefs = await SharedPreferences.getInstance();
+    final set = (prefs.getStringList(_favoritesKey) ?? []).toSet();
+    if (isFavorite) {
+      set.add(id);
+    } else {
+      set.remove(id);
+    }
+    await prefs.setStringList(_favoritesKey, set.toList());
+  }
+
+  static Future<void> saveUserProfile(String email, String? fullName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_userEmailKey, email);
+    if (fullName != null && fullName.isNotEmpty) {
+      await prefs.setString(_userNameKey, fullName);
+    } else {
+      await prefs.remove(_userNameKey);
+    }
+  }
+
+  static Future<Map<String, String?>> getUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    return {
+      "email": prefs.getString(_userEmailKey),
+      "name": prefs.getString(_userNameKey),
+    };
+  }
+
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    await prefs.remove(_userEmailKey);
+    await prefs.remove(_userNameKey);
+  }
+
+  static Future<Map<String, dynamic>> fetchMe() async {
+    final uri = Uri.parse("$baseUrl/auth/me");
+    final headers = await _authHeaders(json: true);
+    final response = await http.get(uri, headers: headers);
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      if (data is Map<String, dynamic>) {
+        await saveUserProfile(data['email'] ?? '', data['full_name']);
+        return data;
+      }
+    }
+    throw Exception("Failed to fetch user profile");
   }
 
   static Future<Map<String, String>> _authHeaders({bool json = true}) async {
@@ -60,6 +121,15 @@ class ApiService {
       if (token != null) {
         await saveToken(token);
       }
+      final userData = data['user'];
+      if (userData != null && userData is Map<String, dynamic>) {
+        await saveUserProfile(
+          userData['email'] ?? email,
+          userData['full_name'] ?? fullName,
+        );
+      } else {
+        await saveUserProfile(email, fullName);
+      }
       return data;
     } else {
       throw Exception(data['detail'] ?? 'Registration failed');
@@ -82,6 +152,15 @@ class ApiService {
       final token = data['access_token'];
       if (token != null) {
         await saveToken(token);
+      }
+      final userData = data['user'];
+      if (userData != null && userData is Map<String, dynamic>) {
+        await saveUserProfile(
+          userData['email'] ?? email,
+          userData['full_name'],
+        );
+      } else {
+        await saveUserProfile(email, null);
       }
       return data;
     } else {
@@ -112,19 +191,26 @@ class ApiService {
   // ===========================================================
 
   /// Uploads a file to the backend and returns its summary.
-  static Future<Map<String, dynamic>> uploadFile(
-    String filePath,
-    String fileName,
-  ) async {
+  static Future<Map<String, dynamic>> uploadFile({
+    String? filePath,
+    Uint8List? fileBytes,
+    required String fileName,
+  }) async {
     final uri = Uri.parse("$baseUrl/upload");
     final request = http.MultipartRequest('POST', uri);
 
     final headers = await _authHeaders(json: false);
     request.headers.addAll(headers);
 
-    request.files.add(
-      await http.MultipartFile.fromPath('file', filePath, filename: fileName),
-    );
+    if (fileBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+      );
+    }
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
@@ -138,19 +224,26 @@ class ApiService {
   }
 
   /// Uploads a file and returns a full analysis report.
-  static Future<Map<String, dynamic>> analyzeFile(
-    String filePath,
-    String fileName,
-  ) async {
+  static Future<Map<String, dynamic>> analyzeFile({
+    String? filePath,
+    Uint8List? fileBytes,
+    required String fileName,
+  }) async {
     final uri = Uri.parse("$baseUrl/analyze");
     final request = http.MultipartRequest('POST', uri);
 
     final headers = await _authHeaders(json: false);
     request.headers.addAll(headers);
 
-    request.files.add(
-      await http.MultipartFile.fromPath('file', filePath, filename: fileName),
-    );
+    if (fileBytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+      );
+    } else if (filePath != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath('file', filePath, filename: fileName),
+      );
+    }
 
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
@@ -315,6 +408,7 @@ class ApiService {
       throw Exception('Failed to apply changes');
     }
   }
+
   /// Downloads a file stored on the backend.
   static Future<Uint8List> downloadFile(int fileId) async {
     final uri = Uri.parse("$baseUrl/files/$fileId/download");

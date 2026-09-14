@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../models/file_item.dart';
 import '../models/history_item.dart';
+import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_bottom_nav.dart';
 import 'analyze_screen.dart';
@@ -16,8 +18,76 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   int _navIndex = 2;
   int _filterIndex = 0;
-  final _filters = const ['All', 'Uploads', 'Analysis', 'Edits'];
-  final _groups = HistoryGroup.demo();
+  final _filters = const ['All', 'Excel', 'CSV', 'PDF', 'Issues'];
+  final List<FileItem> _files = [];
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final records = await ApiService.getAllFiles();
+      if (!mounted) return;
+      setState(() {
+        _files
+          ..clear()
+          ..addAll(records.map((r) => FileItem.fromHistoryRecord(r)));
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  List<HistoryGroup> get _filteredGroups {
+    Iterable<FileItem> filtered = _files;
+
+    switch (_filterIndex) {
+      case 1: // Excel
+        filtered = filtered.where((f) => f.kind == FileKind.excel && (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')));
+        break;
+      case 2: // CSV
+        filtered = filtered.where((f) => f.name.toLowerCase().endsWith('.csv'));
+        break;
+      case 3: // PDF
+        filtered = filtered.where((f) => f.kind == FileKind.pdf);
+        break;
+      case 4: // Issues
+        filtered = filtered.where((f) => f.issueCount > 0);
+        break;
+      default: // All
+        filtered = _files;
+    }
+
+    if (_searchQuery.trim().isNotEmpty) {
+      final q = _searchQuery.trim().toLowerCase();
+      filtered = filtered.where((f) => f.name.toLowerCase().contains(q));
+    }
+
+    return HistoryGroup.fromFileItems(filtered.toList());
+  }
 
   void _onNavTap(int index) {
     if (index == _navIndex) return;
@@ -39,6 +109,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = _filteredGroups;
+
     return Scaffold(
       backgroundColor: AppColors.surfaceContainerLow,
       appBar: AppBar(
@@ -52,9 +124,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.fromLTRB(
                   AppSpacing.containerPadding, AppSpacing.sm, AppSpacing.containerPadding, AppSpacing.sm),
               child: TextField(
+                controller: _searchController,
+                onChanged: (v) => setState(() => _searchQuery = v),
                 decoration: InputDecoration(
                   hintText: 'Search history...',
                   prefixIcon: const Icon(Icons.search, size: 22),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          }),
+                        ),
                   filled: true,
                   fillColor: AppColors.surfaceContainer,
                   border: OutlineInputBorder(
@@ -90,28 +173,85 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.containerPadding, 0, AppSpacing.containerPadding, 100),
-                children: [
-                  for (final group in _groups) ...[
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-                      child: Text(group.label, style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant)),
-                    ),
-                    ...group.items.map((item) => Padding(
-                          padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
-                          child: _historyTile(item),
-                        )),
-                    const SizedBox(height: AppSpacing.md),
-                  ],
-                ],
-              ),
+              child: _buildBody(groups),
             ),
           ],
         ),
       ),
       bottomNavigationBar: AppBottomNav(currentIndex: _navIndex, onTap: _onNavTap),
+    );
+  }
+
+  Widget _buildBody(List<HistoryGroup> groups) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+              const SizedBox(height: AppSpacing.md),
+              Text(_errorMessage!, textAlign: TextAlign.center, style: AppTextStyles.bodyMd),
+              const SizedBox(height: AppSpacing.md),
+              ElevatedButton(onPressed: _loadHistory, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (groups.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.history_toggle_off_rounded,
+                  size: 48, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                _files.isEmpty
+                    ? 'No uploaded files in history yet.\nUpload files from Home to see them here.'
+                    : 'No matching files found.',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+              ),
+              if (_files.isEmpty) ...[
+                const SizedBox(height: AppSpacing.lg),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context)
+                      .pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen())),
+                  child: const Text('Go to Home'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+          AppSpacing.containerPadding, 0, AppSpacing.containerPadding, 100),
+      children: [
+        for (final group in groups) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+            child: Text(group.label, style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant)),
+          ),
+          ...group.items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
+                child: _historyTile(item),
+              )),
+          const SizedBox(height: AppSpacing.md),
+        ],
+      ],
     );
   }
 
@@ -121,7 +261,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
       borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        onTap: () {},
+        onTap: () {
+          if (item.fileItem != null) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => AnalyzeScreen(file: item.fileItem)),
+            );
+          }
+        },
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(

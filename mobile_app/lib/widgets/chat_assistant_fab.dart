@@ -4,10 +4,10 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 
 const double _kButtonSize = 64;
-const double _kChatWidth = 288;
-const double _kChatHeight = 360;
+const double _kChatWidth = 310;
+const double _kChatHeight = 420;
 const double _kMargin = 12;
-const double _kTapMoveThreshold = 8; // px — below this, a drag is treated as a tap
+const double _kTapMoveThreshold = 8;
 
 class _ChatMessage {
   final String text;
@@ -54,6 +54,7 @@ class ChatAssistantState extends ChangeNotifier {
 
   void close() {
     if (!isOpen) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     isOpen = false;
     notifyListeners();
   }
@@ -188,6 +189,9 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
       curve: const Interval(0.0, 0.7, curve: Curves.easeOut),
       reverseCurve: Curves.easeIn,
     );
+    _chatController.addStatusListener((status) {
+      if (mounted) setState(() {});
+    });
 
     // Keep this instance's open/close animation in sync whenever the
     // shared chat state changes — including from a different screen.
@@ -209,6 +213,7 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
       _chatController.forward();
       if (mounted) setState(() => _showBubble = false);
     } else {
+      FocusManager.instance.primaryFocus?.unfocus();
       _chatController.reverse();
     }
     if (mounted) setState(() {});
@@ -326,10 +331,8 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
     return Stack(
       children: [
         // Full-area invisible barrier: tapping anywhere outside the chat
-        // window / bubble / button closes the chat. Placed BELOW the chat
-        // window and button in the Stack, so it never blocks taps on them
-        // (Stack hit-tests the top-most child first).
-        if (chatVisible)
+        // window / bubble / button closes the chat. Only rendered when chat is open.
+        if (_chat.isOpen)
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
@@ -450,63 +453,144 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
   }
 
   Widget _buildChatWindow() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       width: _kChatWidth,
       height: _kChatHeight,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.outlineVariant),
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 24, offset: Offset(0, 10))],
+        color: isDark ? const Color(0xFF0F172A) : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: isDark ? const Color(0xFF334155) : AppColors.outlineVariant.withValues(alpha: 0.6),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 28,
+            offset: Offset(0, 12),
+          ),
+        ],
       ),
       child: Column(
         children: [
+          // Sleek Gradient Header
           Container(
-            color: AppColors.primary,
-            padding: const EdgeInsets.all(AppSpacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF4338CA), Color(0xFF6366F1)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
             child: Row(
               children: [
-                const CircleAvatar(
-                  radius: 12,
-                  backgroundColor: Colors.white24,
-                  child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: 16),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 16),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-                Text('AI Assistant',
-                    style: AppTextStyles.labelMd.copyWith(color: AppColors.onPrimary)),
-                const Spacer(),
-                GestureDetector(
-                  onTap: _chat.close,
-                  child: const Icon(Icons.close, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI File Assistant',
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 1),
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF4ADE80),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Online • Ready to analyze',
+                            style: AppTextStyles.bodySm.copyWith(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: _chat.close,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 16),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
+          // Chat Messages List
           Expanded(
             child: Container(
-              color: AppColors.surfaceContainerLow,
-              padding: const EdgeInsets.all(AppSpacing.md),
+              color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: ListView.builder(
                 itemCount: _chat.messages.length + (_chat.isSending ? 1 : 0),
                 itemBuilder: (context, i) {
                   if (i == _chat.messages.length) {
-                    // Trailing "typing..." bubble shown only while the
-                    // real backend call in ChatAssistantState is in flight.
                     return Align(
                       alignment: Alignment.centerLeft,
                       child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(AppSpacing.sm),
+                        margin: const EdgeInsets.only(bottom: 10, left: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12)
-                              .copyWith(bottomLeft: const Radius.circular(0)),
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(16).copyWith(
+                            bottomLeft: const Radius.circular(2),
+                          ),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                          ),
                         ),
-                        child: const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF6366F1)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Analyzing dataset...',
+                              style: AppTextStyles.bodySm.copyWith(
+                                color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -515,21 +599,63 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
                   return Align(
                     alignment: m.fromBot ? Alignment.centerLeft : Alignment.centerRight,
                     child: Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      constraints: const BoxConstraints(maxWidth: 200),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      constraints: const BoxConstraints(maxWidth: 275),
                       decoration: BoxDecoration(
-                        color: m.fromBot ? Colors.white : AppColors.primaryContainer,
-                        borderRadius: BorderRadius.circular(12).copyWith(
-                          bottomLeft: m.fromBot ? const Radius.circular(0) : null,
-                          bottomRight: !m.fromBot ? const Radius.circular(0) : null,
+                        gradient: !m.fromBot
+                            ? const LinearGradient(
+                                colors: [Color(0xFF4F46E5), Color(0xFF6366F1)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              )
+                            : null,
+                        color: m.fromBot
+                            ? (isDark ? const Color(0xFF1E293B) : Colors.white)
+                            : null,
+                        borderRadius: BorderRadius.circular(16).copyWith(
+                          bottomLeft: m.fromBot ? const Radius.circular(2) : const Radius.circular(16),
+                          bottomRight: !m.fromBot ? const Radius.circular(2) : const Radius.circular(16),
                         ),
+                        border: m.fromBot
+                            ? Border.all(
+                                color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                                width: 1,
+                              )
+                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        m.text,
-                        style: AppTextStyles.bodySm.copyWith(
-                          color: m.fromBot ? AppColors.onSurface : AppColors.onPrimaryContainer,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (m.fromBot)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.smart_toy_outlined, size: 12, color: Color(0xFF6366F1)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Assistant',
+                                    style: AppTextStyles.bodySm.copyWith(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: const Color(0xFF6366F1),
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          _buildFormattedMessage(m.text, m.fromBot, context),
+                        ],
                       ),
                     ),
                   );
@@ -537,41 +663,264 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
               ),
             ),
           ),
+          // Input Area
           Container(
-            padding: const EdgeInsets.all(AppSpacing.sm),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppColors.outlineVariant)),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF0F172A) : Colors.white,
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+                ),
+              ),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    enabled: !_chat.isSending,
-                    onSubmitted: (_) => _send(),
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      filled: true,
-                      fillColor: AppColors.surfaceVariant,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                        borderSide: BorderSide.none,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
                       ),
                     ),
-                    style: AppTextStyles.bodySm,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: TextField(
+                      controller: _controller,
+                      enabled: !_chat.isSending,
+                      onSubmitted: (_) => _send(),
+                      decoration: InputDecoration(
+                        hintText: 'Ask about your file...',
+                        hintStyle: AppTextStyles.bodySm.copyWith(
+                          color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
+                          fontSize: 12,
+                        ),
+                        border: InputBorder.none,
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                      style: AppTextStyles.bodySm.copyWith(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        fontSize: 12,
+                      ),
+                    ),
                   ),
                 ),
-                IconButton(
-                  onPressed: _chat.isSending ? null : _send,
-                  icon: const Icon(Icons.send, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Material(
+                  color: const Color(0xFF4F46E5),
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: _chat.isSending ? null : _send,
+                    child: const Padding(
+                      padding: EdgeInsets.all(9),
+                      child: Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 16),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFormattedMessage(String text, bool fromBot, BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultColor = fromBot
+        ? (isDark ? const Color(0xFFE2E8F0) : const Color(0xFF334155))
+        : Colors.white;
+    final baseStyle = AppTextStyles.bodySm.copyWith(
+      color: defaultColor,
+      height: 1.45,
+      fontSize: 12,
+    );
+
+    final lines = text.split('\n');
+    final List<Widget> widgets = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      final rawLine = lines[i];
+      final trimmed = rawLine.trim();
+
+      if (trimmed.isEmpty) {
+        if (widgets.isNotEmpty && i < lines.length - 1) {
+          widgets.add(const SizedBox(height: 6));
+        }
+        continue;
+      }
+
+      // 1. Check if it's a standalone Section Header (e.g. **📊 Dataset Overview** or ### Header)
+      final headerMatch = RegExp(r'^(?:#{1,4}\s+|\*\*)([^\*]+)\*\*$').firstMatch(trimmed);
+      if (headerMatch != null) {
+        final headerTitle = headerMatch.group(1)!.trim();
+        widgets.add(
+          Container(
+            margin: EdgeInsets.only(top: widgets.isNotEmpty ? 10 : 2, bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: fromBot
+                  ? (isDark
+                      ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                      : const Color(0xFFEEF2FF))
+                  : Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: fromBot
+                    ? (isDark
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                        : const Color(0xFFC7D2FE))
+                    : Colors.white.withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: Text(
+                    headerTitle,
+                    style: AppTextStyles.labelMd.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: fromBot
+                          ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4338CA))
+                          : Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+        continue;
+      }
+
+      // 2. Check indentation level for nested sub-bullets
+      final leadingSpaces = rawLine.indexOf(rawLine.trimLeft());
+      final isSubBullet = leadingSpaces >= 2;
+
+      // 3. Check for bullet points (e.g. - item, * item, • item, 1. item)
+      final bulletMatch = RegExp(r'^(\*|-|•|\d+\.)\s+(.*)$').firstMatch(trimmed);
+      if (bulletMatch != null) {
+        final marker = bulletMatch.group(1)!;
+        final content = bulletMatch.group(2)!;
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(
+              top: 2.5,
+              bottom: 2.5,
+              left: isSubBullet ? 14 : 2,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 6, top: 2),
+                  child: Container(
+                    width: isSubBullet ? 4 : 5,
+                    height: isSubBullet ? 4 : 5,
+                    decoration: BoxDecoration(
+                      color: fromBot ? const Color(0xFF6366F1) : Colors.white70,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: _buildRichInlineText(content, baseStyle, fromBot, isDark),
+                ),
+              ],
+            ),
+          ),
+        );
+      } else {
+        // Normal paragraph line
+        widgets.add(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: _buildRichInlineText(trimmed, baseStyle, fromBot, isDark),
+          ),
+        );
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: widgets,
+    );
+  }
+
+  Widget _buildRichInlineText(String text, TextStyle baseStyle, bool fromBot, bool isDark) {
+    final spans = <InlineSpan>[];
+    
+    // Pattern matches both **bold** and `code`
+    final tokenPattern = RegExp(r'(\*\*([^*]+)\*\*|`([^`]+)`)');
+    int lastEnd = 0;
+
+    for (final match in tokenPattern.allMatches(text)) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: baseStyle,
+        ));
+      }
+
+      if (match.group(2) != null) {
+        // Bold match
+        final boldContent = match.group(2)!;
+        spans.add(TextSpan(
+          text: boldContent,
+          style: baseStyle.copyWith(
+            fontWeight: FontWeight.w700,
+            color: fromBot
+                ? (isDark ? Colors.white : const Color(0xFF0F172A))
+                : Colors.white,
+          ),
+        ));
+      } else if (match.group(3) != null) {
+        // Inline code / file name backtick match
+        final codeContent = match.group(3)!;
+        spans.add(WidgetSpan(
+          alignment: PlaceholderAlignment.middle,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: isDark ? const Color(0xFF475569) : const Color(0xFFCBD5E1),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              codeContent,
+              style: baseStyle.copyWith(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: fromBot ? const Color(0xFF4F46E5) : Colors.white,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ));
+      }
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: baseStyle,
+      ));
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
     );
   }
 }

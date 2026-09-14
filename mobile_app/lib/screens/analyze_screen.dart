@@ -67,7 +67,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       final Map<String, dynamic> report;
       if (file.filePath != null) {
         // Freshly picked this session — send the file itself.
-        report = await ApiService.analyzeFile(file.filePath!, file.name);
+        report = await ApiService.analyzeFile(
+          filePath: file.filePath,
+          fileName: file.name,
+        );
       } else if (file.fileId != null) {
         // Restored from history — use the backend's stored copy.
         report = await ApiService.analyzeStoredFile(file.fileId!);

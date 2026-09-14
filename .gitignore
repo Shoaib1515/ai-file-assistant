@@ -38,3 +38,8 @@ backend/storage/
 .claude/
 .idea/
 *.log
+
+# Local Agent & Tool Artifacts
+.agents/
+graphify-out/
+

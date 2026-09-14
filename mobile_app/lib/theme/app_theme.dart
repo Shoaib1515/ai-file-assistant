@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Design tokens taken from the Stitch "Intelligent Asset System" design spec.
 class AppColors {
@@ -150,6 +151,25 @@ class AppTextStyles {
 class AppTheme {
   AppTheme._();
 
+  static const String _themePrefKey = "is_dark_mode";
+  static final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.light);
+
+  static Future<void> initTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isDark = prefs.getBool(_themePrefKey) ?? false;
+      themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    } catch (_) {}
+  }
+
+  static Future<void> toggleTheme(bool isDark) async {
+    themeNotifier.value = isDark ? ThemeMode.dark : ThemeMode.light;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_themePrefKey, isDark);
+    } catch (_) {}
+  }
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
@@ -218,6 +238,78 @@ class AppTheme {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppRadius.md),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    const darkSurface = Color(0xFF1E1F24);
+    const darkBackground = Color(0xFF121316);
+    const darkOnSurface = Color(0xFFE2E2E6);
+
+    return ThemeData(
+      useMaterial3: true,
+      fontFamily: 'Inter',
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: darkBackground,
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF8183F5),
+        onPrimary: Color(0xFF14154B),
+        primaryContainer: Color(0xFF4648D4),
+        onPrimaryContainer: Color(0xFFFFFFFF),
+        secondary: Color(0xFFA0A6BC),
+        onSecondary: Color(0xFF1A2030),
+        surface: darkSurface,
+        onSurface: darkOnSurface,
+        onSurfaceVariant: Color(0xFFA5A4B5),
+        error: Color(0xFFFFB4AB),
+        onError: Color(0xFF690005),
+        outline: Color(0xFF8E8D9F),
+        outlineVariant: Color(0xFF383844),
+      ),
+      textTheme: TextTheme(
+        headlineLarge: AppTextStyles.headlineXl.copyWith(color: darkOnSurface),
+        headlineMedium: AppTextStyles.headlineLg.copyWith(color: darkOnSurface),
+        headlineSmall: AppTextStyles.headlineLgMobile.copyWith(color: darkOnSurface),
+        bodyLarge: AppTextStyles.bodyMd.copyWith(color: darkOnSurface),
+        bodyMedium: AppTextStyles.bodySm.copyWith(color: const Color(0xFFA5A4B5)),
+        labelLarge: AppTextStyles.labelMd.copyWith(color: darkOnSurface),
+        labelSmall: AppTextStyles.labelSm.copyWith(color: const Color(0xFFA5A4B5)),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        foregroundColor: darkOnSurface,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4648D4),
+          foregroundColor: Colors.white,
+          textStyle: AppTextStyles.labelMd.copyWith(color: Colors.white),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+          ),
+          elevation: 0,
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF282930),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: Color(0xFF383844)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: Color(0xFF8183F5), width: 1.5),
         ),
       ),
     );
