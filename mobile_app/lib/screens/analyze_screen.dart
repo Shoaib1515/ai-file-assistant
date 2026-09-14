@@ -192,18 +192,31 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     }
 
     final report = _report!;
-    final totalRows = report['total_rows'] as int;
-    final missingByColumn = report['missing_by_column'] as Map<String, dynamic>;
-    final duplicates = report['duplicates'] as Map<String, dynamic>;
-    final totalDuplicates = duplicates['total_duplicates'] as int;
+    final totalRows = (report['total_rows'] ?? 0) as int;
+    final missingByColumn = (report['missing_by_column'] as Map<String, dynamic>?) ?? {};
+    final typeMismatches = (report['type_mismatches_by_column'] as Map<String, dynamic>?) ?? {};
+    final duplicates = (report['duplicates'] as Map<String, dynamic>?) ?? {};
+    final totalDuplicates = (duplicates['total_duplicates'] ?? 0) as int;
 
     final totalMissing = missingByColumn.values.fold<int>(
       0,
-      (sum, col) => sum + ((col as Map<String, dynamic>)['total_missing'] as int),
+      (sum, col) => sum + (((col as Map<String, dynamic>?)?['total_missing'] ?? 0) as int),
     );
 
-    final cleanRows = (totalRows - totalMissing - totalDuplicates).clamp(0, totalRows);
-    final healthPercent = totalRows == 0 ? 100.0 : (cleanRows / totalRows * 100);
+    final totalMismatches = typeMismatches.values.fold<int>(
+      0,
+      (sum, col) => sum + (((col as Map<String, dynamic>?)?['total_mismatches'] ?? 0) as int),
+    );
+
+    final double healthPercent;
+    if (report['health_score'] != null) {
+      healthPercent = (report['health_score'] as num).toDouble();
+    } else {
+      final clean = (totalRows - totalMissing - totalDuplicates - totalMismatches).clamp(0, totalRows);
+      healthPercent = totalRows == 0 ? 100.0 : (clean / totalRows * 100);
+    }
+
+    final cleanRows = (totalRows - totalMissing - totalDuplicates - totalMismatches).clamp(0, totalRows);
 
     final issues = <IssueEntry>[
       ...missingByColumn.entries.map((entry) {
@@ -211,16 +224,27 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         return IssueEntry(
           icon: Icons.warning_amber_rounded,
           title: '${entry.key} Column',
-          subtitle: 'Missing values',
+          subtitle: 'Missing / blank cells',
           count: count,
           color: AppColors.error,
+        );
+      }),
+      ...typeMismatches.entries.map((entry) {
+        final count = (entry.value as Map<String, dynamic>)['total_mismatches'] as int;
+        final expected = (entry.value as Map<String, dynamic>)['expected_type'] ?? 'valid format';
+        return IssueEntry(
+          icon: Icons.error_outline_rounded,
+          title: '${entry.key} Column',
+          subtitle: 'Type mismatch ($expected expected)',
+          count: count,
+          color: const Color(0xFFF59E0B),
         );
       }),
       if (totalDuplicates > 0)
         IssueEntry(
           icon: Icons.layers_outlined,
           title: 'Duplicate Rows',
-          subtitle: 'Exact matches found',
+          subtitle: 'Exact matching rows',
           count: totalDuplicates,
           color: AppColors.tertiaryContainer,
         ),
@@ -266,7 +290,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                         value: healthPercent / 100,
                         strokeWidth: 8,
                         backgroundColor: AppColors.surfaceVariant,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                        valueColor: AlwaysStoppedAnimation(
+                          healthPercent >= 90
+                              ? AppColors.primary
+                              : healthPercent >= 70
+                                  ? const Color(0xFFF59E0B)
+                                  : AppColors.error,
+                        ),
                         strokeCap: StrokeCap.round,
                       ),
                     ),
@@ -275,12 +305,23 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                         children: [
                           TextSpan(
                               text: healthPercent.toStringAsFixed(0),
-                              style: AppTextStyles.headlineXl
-                                  .copyWith(color: AppColors.primary, fontSize: 36)),
+                              style: AppTextStyles.headlineXl.copyWith(
+                                color: healthPercent >= 90
+                                    ? AppColors.primary
+                                    : healthPercent >= 70
+                                        ? const Color(0xFFF59E0B)
+                                        : AppColors.error,
+                                fontSize: 36,
+                              )),
                           TextSpan(
                               text: '%',
-                              style:
-                                  AppTextStyles.headlineLg.copyWith(color: AppColors.primary)),
+                              style: AppTextStyles.headlineLg.copyWith(
+                                color: healthPercent >= 90
+                                    ? AppColors.primary
+                                    : healthPercent >= 70
+                                        ? const Color(0xFFF59E0B)
+                                        : AppColors.error,
+                              )),
                         ],
                       ),
                     ),
@@ -291,16 +332,28 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: (healthPercent >= 90
+                          ? AppColors.primary
+                          : healthPercent >= 70
+                              ? const Color(0xFFF59E0B)
+                              : AppColors.error)
+                      .withOpacity(0.12),
                   borderRadius: BorderRadius.circular(AppRadius.full),
                 ),
                 child: Text(
                   healthPercent >= 90
-                      ? 'Excellent condition'
+                      ? '✨ Excellent condition'
                       : healthPercent >= 70
-                          ? 'Needs some cleanup'
-                          : 'Needs attention',
-                  style: AppTextStyles.labelMd.copyWith(color: AppColors.primary),
+                          ? '⚠️ Needs some cleanup'
+                          : '🚨 Needs urgent attention',
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: healthPercent >= 90
+                        ? AppColors.primary
+                        : healthPercent >= 70
+                            ? const Color(0xFFF59E0B)
+                            : AppColors.error,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -318,14 +371,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             _totalRowsCard(totalRows),
             _statCard(Icons.warning_amber_rounded, 'Missing', '$totalMissing',
                 AppColors.errorContainer, AppColors.onErrorContainer),
-            _statCard(Icons.content_copy, 'Duplicates', '$totalDuplicates',
-                AppColors.tertiaryFixed, AppColors.onTertiaryFixedVariant),
+            _statCard(Icons.error_outline_rounded, 'Corrupted', '$totalMismatches',
+                const Color(0xFFFEF3C7), const Color(0xFF92400E)),
             _statCard(Icons.fingerprint, 'Clean rows', '$cleanRows',
                 AppColors.surfaceContainerLow, AppColors.onSurfaceVariant),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
-        Text('ISSUES FOUND',
+        Text('ISSUES FOUND (${issues.length})',
             style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant, letterSpacing: 1.0)),
         const SizedBox(height: AppSpacing.sm),
         if (issues.isEmpty)

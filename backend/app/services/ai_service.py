@@ -130,8 +130,38 @@ Missing values per column: {missing_values}
 </user_question>"""
 
 
-def ask_ai_about_file(question: str, file_summary: dict) -> str:
-    prompt = build_prompt(question, file_summary)
+def build_general_prompt(question: str) -> str:
+    """
+    Constructs a helpful prompt for general app navigation, file format queries,
+    and data assistance when no specific dataset is active.
+    """
+    return f"""You are the friendly and intelligent AI Assistant for "AI File Assistant".
+Your goal is to assist the user with using the app, understanding dataset operations, and exploring features.
+
+APP CAPABILITIES:
+- Supported Formats: CSV (.csv), Excel (.xlsx, .xls) up to 100,000 rows.
+- Data Quality Analysis: Automated calculation of Health Score (0-100%), detection of missing values, duplicate rows, and messy format issues.
+- 1-Tap AI Edits: Autofill missing cells, clean emails, standardize dates, capitalize names, round decimals, and trim spaces.
+- Export: Direct download to clean .xlsx / Excel spreadsheet.
+- Multi-Language: Supports questions in English, Roman Urdu, and Urdu.
+
+FORMATTING REQUIREMENTS:
+- Structure your response using clean, beautiful Markdown with bold headers and bullet points.
+- If the user asks in Roman Urdu (e.g. "Kese use karein", "Kese upload karein"), respond warmly and helpfully in easy-to-understand Roman Urdu!
+- If the user asks in English, respond in clear English.
+- Keep paragraphs short, punchy, and structured with relevant emojis (e.g. 📁, 📊, ⚡, 💡).
+
+<user_question>
+{question}
+</user_question>"""
+
+
+def ask_ai_about_file(question: str, file_summary: Any = None) -> str:
+    if file_summary and isinstance(file_summary, dict) and any(file_summary.values()):
+        prompt = build_prompt(question, file_summary)
+    else:
+        prompt = build_general_prompt(question)
+
     provider = get_ai_provider()
 
     max_retries = 3

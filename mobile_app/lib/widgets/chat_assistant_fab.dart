@@ -9,7 +9,35 @@ const double _kChatHeight = 440;
 const double _kMargin = 12;
 const double _kTapMoveThreshold = 8;
 
-final List<Map<String, String>> _chatSuggestions = const [
+final List<Map<String, String>> _homeSuggestions = const [
+  {
+    'icon': '📁',
+    'label': 'How to Upload',
+    'prompt': 'How do I upload and analyze CSV or Excel files in this app?',
+  },
+  {
+    'icon': '✨',
+    'label': 'App Features',
+    'prompt': 'What features and AI capabilities can this app do for my files?',
+  },
+  {
+    'icon': '🇵🇰',
+    'label': 'Roman Urdu Help',
+    'prompt': 'Is app ko use karne ka asaan tareeqa Roman Urdu mein samjha dein.',
+  },
+  {
+    'icon': '📄',
+    'label': 'Supported Formats',
+    'prompt': 'What file formats and row limits are supported?',
+  },
+  {
+    'icon': '🧹',
+    'label': 'Cleaning Tips',
+    'prompt': 'What are the best practices for preparing and cleaning datasets?',
+  },
+];
+
+final List<Map<String, String>> _fileSuggestions = const [
   {
     'icon': '📊',
     'label': 'Summary',
@@ -58,20 +86,20 @@ class ChatAssistantState extends ChangeNotifier {
   Offset? positionFraction; // 0..1, relative to whatever area it's drawn in
 
   /// The file the current screen has "in focus" (set by each screen's
-  /// initState, e.g. AnalyzeScreen). The backend's /ask endpoint needs a
-  /// file summary to answer anything useful, so when this is null the
-  /// assistant answers locally instead of calling the backend.
+  /// initState, e.g. AnalyzeScreen). When null, the assistant answers
+  /// general app navigation and data questions.
   FileItem? _currentFile;
 
   final List<ChatMessage> messages = [
     const ChatMessage(
-      text: "Hello! How can I help you with your files today?",
+      text: "👋 Hello! I am your AI File Assistant. Ask me how to use the app, or open any file to analyze and clean it!",
       fromBot: true,
     ),
   ];
 
   void setCurrentFile(FileItem? file) {
     _currentFile = file;
+    notifyListeners();
   }
 
   void open() {
@@ -96,23 +124,12 @@ class ChatAssistantState extends ChangeNotifier {
     messages.add(ChatMessage(text: trimmed, fromBot: false));
     notifyListeners();
 
-    final file = _currentFile;
-    if (file == null || file.summary == null) {
-      // No file open right now — the backend needs a file summary to
-      // answer anything meaningful, so don't call it with nothing.
-      messages.add(const ChatMessage(
-        text: "Open a file from Home first, then ask me anything about it.",
-        fromBot: true,
-      ));
-      notifyListeners();
-      return;
-    }
-
     isSending = true;
     notifyListeners();
 
     try {
-      final answer = await ApiService.askAI(trimmed, file.summary!);
+      final file = _currentFile;
+      final answer = await ApiService.askAI(trimmed, file?.summary);
       messages.add(ChatMessage(text: answer, fromBot: true));
     } catch (e) {
       messages.add(ChatMessage(
@@ -185,6 +202,7 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
   late final Animation<double> _chatFade;
 
   final _controller = TextEditingController();
+  final _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -236,21 +254,44 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
     }
   }
 
+  void _scrollToBottom([bool animated = true]) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        if (animated) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      }
+    });
+  }
+
   void _onChatChanged() {
     if (_chat.isOpen) {
       _chatController.forward();
-      if (mounted) setState(() => _showBubble = false);
+      if (mounted) {
+        setState(() => _showBubble = false);
+        _scrollToBottom(true);
+      }
     } else {
       FocusManager.instance.primaryFocus?.unfocus();
       _chatController.reverse();
     }
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _scrollToBottom(true);
+    }
   }
 
   @override
   void dispose() {
     _chat.removeListener(_onChatChanged);
     _controller.dispose();
+    _scrollController.dispose();
     _snapController.dispose();
     _chatController.dispose();
     super.dispose();
@@ -261,6 +302,7 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
     _controller.clear();
     _chat.sendMessage(text); // fires notifyListeners() itself as it progresses
     setState(() {});
+    _scrollToBottom(true);
   }
 
   /// Clamps [pos] so the button always stays fully inside [area] — the
@@ -584,6 +626,7 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
               color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: ListView.builder(
+                controller: _scrollController,
                 itemCount: _chat.messages.length + (_chat.isSending ? 1 : 0),
                 itemBuilder: (context, i) {
                   if (i == _chat.messages.length) {
@@ -691,55 +734,60 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
               ),
             ),
           ),
-          // Quick Suggestion Chips Bar
-          Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _chatSuggestions.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (context, idx) {
-                final item = _chatSuggestions[idx];
-                return InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: _chat.isSending
-                      ? null
-                      : () {
-                          _controller.text = item['prompt']!;
-                          _send();
-                        },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          // Context-aware Quick Suggestion Chips Bar
+          Builder(
+            builder: (context) {
+              final suggestions = _chat._currentFile != null ? _fileSuggestions : _homeSuggestions;
+              return Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: suggestions.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 6),
+                  itemBuilder: (context, idx) {
+                    final item = suggestions[idx];
+                    return InkWell(
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(item['icon']!, style: const TextStyle(fontSize: 11)),
-                        const SizedBox(width: 4),
-                        Text(
-                          item['label']!,
-                          style: AppTextStyles.bodySm.copyWith(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
-                            color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                      onTap: _chat.isSending
+                          ? null
+                          : () {
+                              _controller.text = item['prompt']!;
+                              _send();
+                            },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                            width: 0.8,
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(item['icon']!, style: const TextStyle(fontSize: 11)),
+                            const SizedBox(width: 4),
+                            Text(
+                              item['label']!,
+                              style: AppTextStyles.bodySm.copyWith(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? const Color(0xFFCBD5E1) : const Color(0xFF334155),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
           ),
           // Input Area
           Container(
@@ -831,50 +879,62 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
         continue;
       }
 
-      // 1. Check if it's a standalone Section Header (e.g. **📊 Dataset Overview** or ### Header)
-      final headerMatch = RegExp(r'^(?:#{1,4}\s+|\*\*)([^\*]+)\*\*$').firstMatch(trimmed);
-      if (headerMatch != null) {
-        final headerTitle = headerMatch.group(1)!.trim();
-        widgets.add(
-          Container(
-            margin: EdgeInsets.only(top: widgets.isNotEmpty ? 10 : 2, bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: fromBot
-                  ? (isDark
-                      ? const Color(0xFF6366F1).withValues(alpha: 0.15)
-                      : const Color(0xFFEEF2FF))
-                  : Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
+      // 1. Check if it's a standalone Section Header (e.g. ### Header, **Header**, or ### **Header**)
+      final isHeading = trimmed.startsWith('#') ||
+          (trimmed.startsWith('**') &&
+              trimmed.endsWith('**') &&
+              !trimmed.substring(2, trimmed.length - 2).contains('**'));
+
+      if (isHeading) {
+        final headerTitle = trimmed
+            .replaceAll(RegExp(r'^#{1,6}\s*'), '')
+            .replaceAll(RegExp(r'\s*#*$'), '')
+            .replaceAll(RegExp(r'^\*\*|\*\*$'), '')
+            .replaceAll('~', '')
+            .trim();
+
+        if (headerTitle.isNotEmpty) {
+          widgets.add(
+            Container(
+              margin: EdgeInsets.only(top: widgets.isNotEmpty ? 10 : 2, bottom: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
                 color: fromBot
                     ? (isDark
-                        ? const Color(0xFF6366F1).withValues(alpha: 0.3)
-                        : const Color(0xFFC7D2FE))
-                    : Colors.white.withValues(alpha: 0.25),
-                width: 0.8,
+                        ? const Color(0xFF6366F1).withValues(alpha: 0.15)
+                        : const Color(0xFFEEF2FF))
+                    : Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: fromBot
+                      ? (isDark
+                          ? const Color(0xFF6366F1).withValues(alpha: 0.3)
+                          : const Color(0xFFC7D2FE))
+                      : Colors.white.withValues(alpha: 0.25),
+                  width: 0.8,
+                ),
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Expanded(
-                  child: Text(
-                    headerTitle,
-                    style: AppTextStyles.labelMd.copyWith(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                      color: fromBot
-                          ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4338CA))
-                          : Colors.white,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Expanded(
+                    child: Text(
+                      headerTitle,
+                      style: AppTextStyles.labelMd.copyWith(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                        color: fromBot
+                            ? (isDark ? const Color(0xFFA5B4FC) : const Color(0xFF4338CA))
+                            : Colors.white,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        );
-        continue;
+          );
+          continue;
+        }
       }
 
       // 2. Check indentation level for nested sub-bullets
@@ -934,16 +994,19 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
   Widget _buildRichInlineText(String text, TextStyle baseStyle, bool fromBot, bool isDark) {
     final spans = <InlineSpan>[];
     
-    // Pattern matches both **bold** and `code`
-    final tokenPattern = RegExp(r'(\*\*([^*]+)\*\*|`([^`]+)`)');
+    // Pattern matches bold (**), code (`), italic (*), and strikethrough (~~ or ~)
+    final tokenPattern = RegExp(r'(\*\*([^*]+)\*\*|`([^`]+)`|\*([^*]+)\*|~~([^~]+)~~|~([^~]+)~)');
     int lastEnd = 0;
 
     for (final match in tokenPattern.allMatches(text)) {
       if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: baseStyle,
-        ));
+        final plain = text.substring(lastEnd, match.start).replaceAll(RegExp(r'[#~]'), '');
+        if (plain.isNotEmpty) {
+          spans.add(TextSpan(
+            text: plain,
+            style: baseStyle,
+          ));
+        }
       }
 
       if (match.group(2) != null) {
@@ -985,15 +1048,32 @@ class _ChatAssistantFabState extends State<ChatAssistantFab>
             ),
           ),
         ));
+      } else if (match.group(4) != null) {
+        // Italic match
+        final italicContent = match.group(4)!;
+        spans.add(TextSpan(
+          text: italicContent,
+          style: baseStyle.copyWith(fontStyle: FontStyle.italic),
+        ));
+      } else if (match.group(5) != null || match.group(6) != null) {
+        // Strikethrough match
+        final strikeContent = (match.group(5) ?? match.group(6))!;
+        spans.add(TextSpan(
+          text: strikeContent,
+          style: baseStyle.copyWith(decoration: TextDecoration.lineThrough),
+        ));
       }
       lastEnd = match.end;
     }
 
     if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: baseStyle,
-      ));
+      final plain = text.substring(lastEnd).replaceAll(RegExp(r'[#~]'), '');
+      if (plain.isNotEmpty) {
+        spans.add(TextSpan(
+          text: plain,
+          style: baseStyle,
+        ));
+      }
     }
 
     return Text.rich(

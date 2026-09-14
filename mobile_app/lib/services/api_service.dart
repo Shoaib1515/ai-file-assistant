@@ -256,11 +256,11 @@ class ApiService {
     }
   }
 
-  /// Sends a question along with the file's summary to the AI.
+  /// Sends a question along with optional file summary to the AI.
   static Future<String> askAI(
-    String question,
-    Map<String, dynamic> fileSummary,
-  ) async {
+    String question, [
+    Map<String, dynamic>? fileSummary,
+  ]) async {
     final uri = Uri.parse("$baseUrl/ask");
     final headers = await _authHeaders(json: true);
 
