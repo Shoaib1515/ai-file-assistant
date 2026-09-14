@@ -116,16 +116,22 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.scaffoldBg,
       appBar: AppBar(
         title: Row(
           children: [
             const Icon(Icons.table_chart_outlined, color: AppColors.primary, size: 20),
             const SizedBox(width: AppSpacing.sm),
             Flexible(
-              child: Text(widget.file?.name ?? 'Analyze',
-                  overflow: TextOverflow.ellipsis, style: AppTextStyles.headlineLgMobile),
+              child: Text(
+                widget.file?.name ?? 'Analyze',
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.headlineLgMobile.copyWith(
+                  color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                ),
+              ),
             ),
           ],
         ),
@@ -142,6 +148,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   }
 
   Widget _buildBody() {
+    final isDark = context.isDarkMode;
     if (widget.file == null) {
       return Center(
         child: Padding(
@@ -254,28 +261,39 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.containerPadding),
       children: [
         Text('Quality report generated just now.',
-            style: AppTextStyles.bodySm.copyWith(color: AppColors.onSurfaceVariant)),
+            style: AppTextStyles.bodySm.copyWith(
+              color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+            )),
         const SizedBox(height: AppSpacing.md),
         Container(
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.6)),
+            border: Border.all(color: isDark ? const Color(0xFF2E3038) : Colors.white.withOpacity(0.6)),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                AppColors.primary.withOpacity(0.1),
-                AppColors.surface,
-                AppColors.secondaryContainer.withOpacity(0.2),
+                AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
+                isDark ? const Color(0xFF1E1F24) : AppColors.surface,
+                isDark ? const Color(0xFF282930) : AppColors.secondaryContainer.withOpacity(0.2),
               ],
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.3 : 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             children: [
               Text('DATA QUALITY SCORE',
-                  style: AppTextStyles.labelMd
-                      .copyWith(color: AppColors.onSurfaceVariant, letterSpacing: 1.2)),
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                    letterSpacing: 1.2,
+                  )),
               const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: 140,
@@ -289,10 +307,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                       child: CircularProgressIndicator(
                         value: healthPercent / 100,
                         strokeWidth: 8,
-                        backgroundColor: AppColors.surfaceVariant,
+                        backgroundColor: isDark ? const Color(0xFF2E3038) : AppColors.surfaceVariant,
                         valueColor: AlwaysStoppedAnimation(
                           healthPercent >= 90
-                              ? AppColors.primary
+                              ? (isDark ? const Color(0xFF8183F5) : AppColors.primary)
                               : healthPercent >= 70
                                   ? const Color(0xFFF59E0B)
                                   : AppColors.error,
@@ -307,7 +325,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                               text: healthPercent.toStringAsFixed(0),
                               style: AppTextStyles.headlineXl.copyWith(
                                 color: healthPercent >= 90
-                                    ? AppColors.primary
+                                    ? (isDark ? const Color(0xFF8183F5) : AppColors.primary)
                                     : healthPercent >= 70
                                         ? const Color(0xFFF59E0B)
                                         : AppColors.error,
@@ -317,7 +335,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                               text: '%',
                               style: AppTextStyles.headlineLg.copyWith(
                                 color: healthPercent >= 90
-                                    ? AppColors.primary
+                                    ? (isDark ? const Color(0xFF8183F5) : AppColors.primary)
                                     : healthPercent >= 70
                                         ? const Color(0xFFF59E0B)
                                         : AppColors.error,
@@ -348,7 +366,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                           : '🚨 Needs urgent attention',
                   style: AppTextStyles.labelMd.copyWith(
                     color: healthPercent >= 90
-                        ? AppColors.primary
+                        ? (isDark ? const Color(0xFF8183F5) : AppColors.primary)
                         : healthPercent >= 70
                             ? const Color(0xFFF59E0B)
                             : AppColors.error,
@@ -374,25 +392,33 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             _statCard(Icons.error_outline_rounded, 'Corrupted', '$totalMismatches',
                 const Color(0xFFFEF3C7), const Color(0xFF92400E)),
             _statCard(Icons.fingerprint, 'Clean rows', '$cleanRows',
-                AppColors.surfaceContainerLow, AppColors.onSurfaceVariant),
+                isDark ? const Color(0xFF1E1F24) : AppColors.surfaceContainerLow,
+                isDark ? const Color(0xFFE2E2E6) : AppColors.onSurfaceVariant),
           ],
         ),
         const SizedBox(height: AppSpacing.lg),
         Text('ISSUES FOUND (${issues.length})',
-            style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant, letterSpacing: 1.0)),
+            style: AppTextStyles.labelMd.copyWith(
+              color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+              letterSpacing: 1.0,
+            )),
         const SizedBox(height: AppSpacing.sm),
         if (issues.isEmpty)
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
+              color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.8),
               borderRadius: BorderRadius.circular(AppRadius.xxl),
+              border: Border.all(color: isDark ? const Color(0xFF2E3038) : Colors.white),
             ),
             child: Row(
               children: [
                 const Icon(Icons.check_circle, color: AppColors.success),
                 const SizedBox(width: AppSpacing.sm),
-                Text('No issues found — this file looks clean.', style: AppTextStyles.bodyMd),
+                Text('No issues found — this file looks clean.',
+                    style: AppTextStyles.bodyMd.copyWith(
+                      color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                    )),
               ],
             ),
           )
@@ -472,12 +498,20 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   }
 
   Widget _issueCard(IssueEntry issue) {
+    final isDark = context.isDarkMode;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
+        color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.8),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: AppColors.surfaceVariant.withOpacity(0.6)),
+        border: Border.all(color: isDark ? const Color(0xFF2E3038) : AppColors.surfaceVariant.withOpacity(0.6)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -497,8 +531,18 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(issue.title, style: AppTextStyles.labelMd),
-                Text(issue.subtitle, style: AppTextStyles.bodySm),
+                Text(
+                  issue.title,
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                  ),
+                ),
+                Text(
+                  issue.subtitle,
+                  style: AppTextStyles.bodySm.copyWith(
+                    color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),

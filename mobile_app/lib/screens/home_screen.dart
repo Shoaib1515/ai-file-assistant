@@ -247,8 +247,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.scaffoldBg,
       appBar: AppBar(
         title: Row(
           children: [
@@ -256,13 +257,17 @@ class _HomeScreenState extends State<HomeScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? const Color(0xFF2E3038) : Colors.white,
                 borderRadius: BorderRadius.circular(AppRadius.sm),
               ),
               child: const Icon(Icons.folder_special_rounded, color: AppColors.primary, size: 18),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text('Files', style: AppTextStyles.labelMd.copyWith(fontSize: 18)),
+            Text('Files',
+                style: AppTextStyles.labelMd.copyWith(
+                  fontSize: 18,
+                  color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                )),
           ],
         ),
         actions: [
@@ -286,9 +291,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.5),
+                    color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(AppRadius.xxl),
-                    border: Border.all(color: Colors.white),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF2E3038) : Colors.white,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,13 +310,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       Row(
                         children: [
                           Text('Hello, $_displayName! ',
-                              style: AppTextStyles.headlineXl.copyWith(fontSize: 26)),
+                              style: AppTextStyles.headlineXl.copyWith(
+                                fontSize: 26,
+                                color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                              )),
                           const Text('👋', style: TextStyle(fontSize: 26)),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text('What are we looking for today?',
-                          style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant)),
+                          style: AppTextStyles.bodyMd.copyWith(
+                            color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                          )),
                     ],
                   ),
                 ),
@@ -310,23 +329,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextField(
                   controller: _searchController,
                   onChanged: (value) => setState(() => _searchQuery = value),
+                  style: TextStyle(color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface),
                   decoration: InputDecoration(
                     hintText: 'Search files, contents, or formats...',
-                    prefixIcon: const Icon(Icons.search, size: 22),
+                    hintStyle: TextStyle(color: isDark ? const Color(0xFF8E8D9F) : AppColors.outline),
+                    prefixIcon: Icon(Icons.search, size: 22, color: isDark ? const Color(0xFFA5A4B5) : AppColors.outline),
                     suffixIcon: _searchQuery.isEmpty
                         ? null
                         : IconButton(
-                            icon: const Icon(Icons.close, size: 18),
+                            icon: Icon(Icons.close, size: 18, color: isDark ? const Color(0xFFA5A4B5) : AppColors.outline),
                             onPressed: () => setState(() {
                               _searchController.clear();
                               _searchQuery = '';
                             }),
                           ),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.6),
+                    fillColor: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.full),
-                      borderSide: BorderSide.none,
+                      borderSide: isDark ? const BorderSide(color: Color(0xFF2E3038)) : BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      borderSide: BorderSide(color: isDark ? const Color(0xFF2E3038) : Colors.transparent),
                     ),
                   ),
                 ),
@@ -347,15 +372,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         avatar: isFavorites ? const Icon(Icons.star_rounded, size: 16) : null,
                         labelStyle: AppTextStyles.labelSm.copyWith(
                           color: selected
-                              ? AppColors.onPrimary
-                              : (isFavorites ? AppColors.onTertiaryFixedVariant : AppColors.onSurfaceVariant),
+                              ? Colors.white
+                              : (isFavorites
+                                  ? (isDark ? const Color(0xFFFFB783) : AppColors.onTertiaryFixedVariant)
+                                  : (isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant)),
                         ),
-                        backgroundColor:
-                            isFavorites ? AppColors.tertiaryFixed : Colors.white.withOpacity(0.6),
-                        selectedColor: AppColors.primary,
+                        backgroundColor: isFavorites
+                            ? (isDark ? const Color(0xFF3B2514) : AppColors.tertiaryFixed)
+                            : (isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7)),
+                        selectedColor: isDark ? const Color(0xFF4648D4) : AppColors.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(AppRadius.full),
-                          side: BorderSide(color: Colors.white.withOpacity(0.8)),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF2E3038) : Colors.white.withOpacity(0.8),
+                          ),
                         ),
                       );
                     },
@@ -365,12 +395,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Recent Files', style: AppTextStyles.headlineLgMobile),
+                    Text('Recent Files',
+                        style: AppTextStyles.headlineLgMobile.copyWith(
+                          color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                        )),
                     TextButton(
                       onPressed: () => Navigator.of(context)
                           .push(MaterialPageRoute(builder: (_) => const HistoryScreen())),
                       child: Text('View All',
-                          style: AppTextStyles.labelSm.copyWith(color: AppColors.primary)),
+                          style: AppTextStyles.labelSm.copyWith(
+                            color: isDark ? const Color(0xFF8183F5) : AppColors.primary,
+                          )),
                     ),
                   ],
                 ),

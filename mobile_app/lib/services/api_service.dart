@@ -9,7 +9,7 @@ class ApiService {
     if (kIsWeb) {
       return "http://localhost:8000";
     }
-    return "http://192.168.1.3:8000";
+    return "http://192.168.1.6:8000";
   }
 
   static const String _tokenKey = "jwt_token";

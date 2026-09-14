@@ -315,3 +315,14 @@ class AppTheme {
     );
   }
 }
+
+extension AppThemeContext on BuildContext {
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
+  Color get scaffoldBg => Theme.of(this).scaffoldBackgroundColor;
+  Color get surfaceColor => Theme.of(this).colorScheme.surface;
+  Color get cardBgColor => isDarkMode ? const Color(0xFF1E1F24) : Colors.white;
+  Color get cardSubtleBgColor => isDarkMode ? const Color(0xFF282930) : AppColors.surfaceContainerLow;
+  Color get cardBorderColor => isDarkMode ? const Color(0xFF2E3038) : Colors.white.withOpacity(0.6);
+  Color get textPrimary => Theme.of(this).colorScheme.onSurface;
+  Color get textSecondary => Theme.of(this).colorScheme.onSurfaceVariant;
+}

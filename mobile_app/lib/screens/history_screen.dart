@@ -110,12 +110,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final groups = _filteredGroups;
+    final isDark = context.isDarkMode;
 
     return Scaffold(
-      backgroundColor: AppColors.surfaceContainerLow,
+      backgroundColor: context.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: AppColors.surfaceContainerLow,
-        title: Text('History', style: AppTextStyles.headlineLgMobile),
+        title: Text(
+          'History',
+          style: AppTextStyles.headlineLgMobile.copyWith(
+            color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Column(
@@ -126,23 +131,29 @@ class _HistoryScreenState extends State<HistoryScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (v) => setState(() => _searchQuery = v),
+                style: TextStyle(color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface),
                 decoration: InputDecoration(
                   hintText: 'Search history...',
-                  prefixIcon: const Icon(Icons.search, size: 22),
+                  hintStyle: TextStyle(color: isDark ? const Color(0xFF8E8D9F) : AppColors.outline),
+                  prefixIcon: Icon(Icons.search, size: 22, color: isDark ? const Color(0xFFA5A4B5) : AppColors.outline),
                   suffixIcon: _searchQuery.isEmpty
                       ? null
                       : IconButton(
-                          icon: const Icon(Icons.close, size: 18),
+                          icon: Icon(Icons.close, size: 18, color: isDark ? const Color(0xFFA5A4B5) : AppColors.outline),
                           onPressed: () => setState(() {
                             _searchController.clear();
                             _searchQuery = '';
                           }),
                         ),
                   filled: true,
-                  fillColor: AppColors.surfaceContainer,
+                  fillColor: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppRadius.xl),
-                    borderSide: BorderSide.none,
+                    borderSide: isDark ? const BorderSide(color: Color(0xFF2E3038)) : BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                    borderSide: BorderSide(color: isDark ? const Color(0xFF2E3038) : Colors.transparent),
                   ),
                 ),
               ),
@@ -161,12 +172,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     selected: selected,
                     onSelected: (_) => setState(() => _filterIndex = i),
                     labelStyle: AppTextStyles.labelMd.copyWith(
-                      color: selected ? AppColors.surfaceContainerLowest : AppColors.onSurface,
+                      color: selected
+                          ? Colors.white
+                          : (isDark ? const Color(0xFFA5A4B5) : AppColors.onSurface),
                     ),
-                    backgroundColor: AppColors.surfaceContainer,
-                    selectedColor: AppColors.onSurface,
+                    backgroundColor: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
+                    selectedColor: isDark ? const Color(0xFF4648D4) : AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.full)),
-                    side: BorderSide.none,
+                    side: BorderSide(color: isDark ? const Color(0xFF2E3038) : Colors.white.withOpacity(0.8)),
                   );
                 },
               ),
@@ -183,6 +196,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildBody(List<HistoryGroup> groups) {
+    final isDark = context.isDarkMode;
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -213,14 +227,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.history_toggle_off_rounded,
-                  size: 48, color: AppColors.onSurfaceVariant.withOpacity(0.5)),
+                  size: 48, color: (isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant).withOpacity(0.5)),
               const SizedBox(height: AppSpacing.md),
               Text(
                 _files.isEmpty
                     ? 'No uploaded files in history yet.\nUpload files from Home to see them here.'
                     : 'No matching files found.',
                 textAlign: TextAlign.center,
-                style: AppTextStyles.bodyMd.copyWith(color: AppColors.onSurfaceVariant),
+                style: AppTextStyles.bodySm.copyWith(
+                  color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                ),
               ),
               if (_files.isEmpty) ...[
                 const SizedBox(height: AppSpacing.lg),
@@ -243,7 +259,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         for (final group in groups) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-            child: Text(group.label, style: AppTextStyles.labelMd.copyWith(color: AppColors.onSurfaceVariant)),
+            child: Text(
+              group.label,
+              style: AppTextStyles.labelMd.copyWith(
+                color: isDark ? const Color(0xFF8183F5) : AppColors.onSurfaceVariant,
+              ),
+            ),
           ),
           ...group.items.map((item) => Padding(
                 padding: const EdgeInsets.only(bottom: AppSpacing.stackGap),
@@ -256,8 +277,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _historyTile(HistoryItem item) {
+    final isDark = context.isDarkMode;
     return Material(
-      color: AppColors.surfaceContainerLowest,
+      color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.8),
       borderRadius: BorderRadius.circular(AppRadius.xl),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -272,7 +294,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.xl),
-            border: Border.all(color: AppColors.outlineVariant),
+            border: Border.all(color: isDark ? const Color(0xFF2E3038) : AppColors.outlineVariant.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -293,8 +322,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Row(
                       children: [
                         Flexible(
-                          child: Text(item.title,
-                              overflow: TextOverflow.ellipsis, style: AppTextStyles.labelMd),
+                          child: Text(
+                            item.title,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 6),
                         Container(
@@ -304,12 +338,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ],
                     ),
-                    Text(item.subtitle, overflow: TextOverflow.ellipsis, style: AppTextStyles.bodySm),
+                    Text(
+                      item.subtitle,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.bodySm.copyWith(
+                        color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(width: AppSpacing.sm),
-              Text(item.time, style: AppTextStyles.labelSm),
+              Text(
+                item.time,
+                style: AppTextStyles.labelSm.copyWith(
+                  color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),

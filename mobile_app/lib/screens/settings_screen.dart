@@ -200,15 +200,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: context.scaffoldBg,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
               width: 32,
               height: 32,
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.sm)),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2E3038) : Colors.white,
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
               child: const Icon(Icons.folder_special_rounded, color: AppColors.primary, size: 18),
             ),
           ],
@@ -234,9 +238,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: AppColors.surfaceContainer.withOpacity(0.5),
+                    color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
                     borderRadius: BorderRadius.circular(AppRadius.xxl),
-                    border: Border.all(color: Colors.white.withOpacity(0.4)),
+                    border: Border.all(color: isDark ? const Color(0xFF2E3038) : Colors.white),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
@@ -251,8 +262,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(_userName, style: AppTextStyles.headlineLgMobile),
-                            Text(_userEmail, style: AppTextStyles.bodySm),
+                            Text(_userName,
+                                style: AppTextStyles.headlineLgMobile.copyWith(
+                                  color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                                )),
+                            Text(_userEmail,
+                                style: AppTextStyles.bodySm.copyWith(
+                                  color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                                )),
                           ],
                         ),
                       ),
@@ -261,47 +278,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.lg),
                 _sectionLabel('PREFERENCES'),
-                _sectionCard([
-                  _switchTile(Icons.dark_mode_outlined, 'Dark Mode', _darkMode, (v) {
+                _sectionCard(context, [
+                  _switchTile(context, Icons.dark_mode_outlined, 'Dark Mode', _darkMode, (v) {
                     setState(() => _darkMode = v);
                     AppTheme.toggleTheme(v);
                   }),
-                  _switchTile(Icons.notifications_active_outlined, 'Push Notifications',
+                  _switchTile(context, Icons.notifications_active_outlined, 'Push Notifications',
                       _pushNotifications, (v) => setState(() => _pushNotifications = v)),
-                  _switchTile(Icons.mail_outline, 'Email Reports', _emailReports,
+                  _switchTile(context, Icons.mail_outline, 'Email Reports', _emailReports,
                       (v) => setState(() => _emailReports = v)),
                 ]),
                 const SizedBox(height: AppSpacing.lg),
                 _sectionLabel('SECURITY'),
-                _sectionCard([
-                  _navTile(Icons.lock_outline, 'Security & Authentication',
+                _sectionCard(context, [
+                  _navTile(context, Icons.lock_outline, 'Security & Authentication',
                       trailing: 'JWT Bearer',
                       onTap: () => _showInfoDialog(
                           'Security Information',
                           'Your session is protected with secure JWT authentication and password hashing (PBKDF2-HMAC-SHA256 with 100,000 rounds).')),
-                  _switchTile(Icons.fingerprint, 'Biometric Login', _biometric,
+                  _switchTile(context, Icons.fingerprint, 'Biometric Login', _biometric,
                       (v) => setState(() => _biometric = v)),
                 ]),
                 const SizedBox(height: AppSpacing.lg),
                 _sectionLabel('DATA & PRIVACY'),
-                _sectionCard([
-                  _navTile(Icons.cleaning_services_outlined, 'Clear Cache',
+                _sectionCard(context, [
+                  _navTile(context, Icons.cleaning_services_outlined, 'Clear Cache',
                       trailing: _cacheSizeLabel, onTap: _clearCache),
-                  _navTile(Icons.policy_outlined, 'Privacy Policy',
+                  _navTile(context, Icons.policy_outlined, 'Privacy Policy',
                       onTap: () => _showInfoDialog(
                           'Privacy Policy',
                           'AI File Assistant processes your datasets strictly on your configured server. Files are never shared or sold to third parties.')),
-                  _navTile(Icons.gavel_outlined, 'Terms of Service',
+                  _navTile(context, Icons.gavel_outlined, 'Terms of Service',
                       onTap: () => _showInfoDialog(
                           'Terms of Service',
                           'Use AI File Assistant responsibly to parse, clean, summarize, and edit your tabular and document datasets.')),
                 ]),
                 const SizedBox(height: AppSpacing.lg),
                 _sectionLabel('ABOUT'),
-                _sectionCard([
-                  _navTile(Icons.star_outline, 'Rate App',
+                _sectionCard(context, [
+                  _navTile(context, Icons.star_outline, 'Rate App',
                       onTap: _showRateAppDialog, color: AppColors.tertiaryContainer),
-                  _navTile(Icons.info_outline, 'App Version',
+                  _navTile(context, Icons.info_outline, 'App Version',
                       trailing: 'v1.0.0',
                       onTap: () => _showInfoDialog(
                           'App Version',
@@ -322,7 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.outlineVariant),
+                      side: BorderSide(color: isDark ? const Color(0xFF383844) : AppColors.outlineVariant),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xxl)),
                     ),
                     icon: const Icon(Icons.logout, size: 20),
@@ -346,45 +363,62 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: AppTextStyles.labelMd.copyWith(color: AppColors.primary, letterSpacing: 1.0)),
       );
 
-  Widget _sectionCard(List<Widget> children) {
+  Widget _sectionCard(BuildContext context, List<Widget> children) {
+    final isDark = context.isDarkMode;
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surfaceContainer.withOpacity(0.5),
+        color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
         borderRadius: BorderRadius.circular(AppRadius.xxl),
-        border: Border.all(color: Colors.white.withOpacity(0.4)),
+        border: Border.all(color: isDark ? const Color(0xFF2E3038) : Colors.white),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         children: [
           for (int i = 0; i < children.length; i++) ...[
             children[i],
             if (i != children.length - 1)
-              const Divider(height: 1, color: AppColors.outlineVariant),
+              Divider(height: 1, color: isDark ? const Color(0xFF2E3038) : AppColors.outlineVariant.withOpacity(0.4)),
           ],
         ],
       ),
     );
   }
 
-  Widget _switchTile(IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
+  Widget _switchTile(BuildContext context, IconData icon, String label, bool value, ValueChanged<bool> onChanged) {
+    final isDark = context.isDarkMode;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.onSurface),
+          Icon(icon, size: 20, color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface),
           const SizedBox(width: AppSpacing.sm),
-          Expanded(child: Text(label, style: AppTextStyles.bodyMd)),
+          Expanded(
+            child: Text(
+              label,
+              style: AppTextStyles.bodyMd.copyWith(
+                color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+              ),
+            ),
+          ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppColors.primary,
+            activeColor: isDark ? const Color(0xFF8183F5) : AppColors.primary,
           ),
         ],
       ),
     );
   }
 
-  Widget _navTile(IconData icon, String label,
+  Widget _navTile(BuildContext context, IconData icon, String label,
       {String? trailing, VoidCallback? onTap, Color color = AppColors.outline}) {
+    final isDark = context.isDarkMode;
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -393,11 +427,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             Icon(icon, size: 20, color: color),
             const SizedBox(width: AppSpacing.sm),
-            Expanded(child: Text(label, style: AppTextStyles.bodyMd)),
+            Expanded(
+              child: Text(
+                label,
+                style: AppTextStyles.bodyMd.copyWith(
+                  color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                ),
+              ),
+            ),
             if (trailing != null)
-              Text(trailing, style: AppTextStyles.bodySm)
+              Text(
+                trailing,
+                style: AppTextStyles.bodySm.copyWith(
+                  color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                ),
+              )
             else if (onTap != null)
-              const Icon(Icons.chevron_right, size: 20, color: AppColors.outlineVariant),
+              Icon(Icons.chevron_right, size: 20, color: isDark ? const Color(0xFF8E8D9F) : AppColors.outlineVariant),
           ],
         ),
       ),

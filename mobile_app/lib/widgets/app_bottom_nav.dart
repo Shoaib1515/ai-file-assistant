@@ -20,10 +20,16 @@ class AppBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xCCF8F9FA),
-        border: Border(top: BorderSide(color: AppColors.outlineVariant, width: 0.5)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xEE1E1F24) : const Color(0xCCF8F9FA),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? const Color(0xFF2E3038) : AppColors.outlineVariant,
+            width: 0.5,
+          ),
+        ),
       ),
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
       child: SizedBox(
@@ -33,7 +39,9 @@ class AppBottomNav extends StatelessWidget {
           children: List.generate(_items.length, (i) {
             final item = _items[i];
             final selected = i == currentIndex;
-            final color = selected ? AppColors.primary : AppColors.onSurfaceVariant;
+            final color = selected
+                ? (isDark ? const Color(0xFF8183F5) : AppColors.primary)
+                : (isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant);
             return Expanded(
               child: InkWell(
                 onTap: () => onTap(i),

@@ -13,8 +13,9 @@ class FileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDarkMode;
     return Material(
-      color: Colors.white.withOpacity(0.6),
+      color: isDark ? const Color(0xFF1E1F24) : Colors.white.withOpacity(0.7),
       borderRadius: BorderRadius.circular(AppRadius.xxl),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.xxl),
@@ -23,7 +24,16 @@ class FileCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.xxl),
-            border: Border.all(color: Colors.white.withOpacity(0.7)),
+            border: Border.all(
+              color: isDark ? const Color(0xFF2E3038) : Colors.white.withOpacity(0.8),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(isDark ? 0.25 : 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,8 +53,19 @@ class FileCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(file.name, style: AppTextStyles.labelMd, overflow: TextOverflow.ellipsis),
-                        Text(file.sizeLabel, style: AppTextStyles.bodySm),
+                        Text(
+                          file.name,
+                          style: AppTextStyles.labelMd.copyWith(
+                            color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          file.sizeLabel,
+                          style: AppTextStyles.bodySm.copyWith(
+                            color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -52,7 +73,7 @@ class FileCard extends StatelessWidget {
                     onPressed: onFavoriteToggle,
                     icon: Icon(
                       file.isFavorite ? Icons.star_rounded : Icons.star_outline_rounded,
-                      color: file.isFavorite ? AppColors.tertiary : AppColors.outline,
+                      color: file.isFavorite ? AppColors.tertiary : (isDark ? const Color(0xFF8E8D9F) : AppColors.outline),
                     ),
                   ),
                 ],
@@ -60,16 +81,38 @@ class FileCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.md),
               Row(
                 children: [
-                  Text(file.metaLabel, style: AppTextStyles.bodySm.copyWith(fontSize: 12)),
+                  Text(
+                    file.metaLabel,
+                    style: AppTextStyles.bodySm.copyWith(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(width: AppSpacing.md),
-                  Text(file.timeLabel, style: AppTextStyles.bodySm.copyWith(fontSize: 12)),
+                  Text(
+                    file.timeLabel,
+                    style: AppTextStyles.bodySm.copyWith(
+                      fontSize: 12,
+                      color: isDark ? const Color(0xFFA5A4B5) : AppColors.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
               Row(
                 children: [
-                  IconButton(icon: const Icon(Icons.download_outlined, size: 20), onPressed: onDownload),
-                  IconButton(icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error), onPressed: onDelete),
+                  IconButton(
+                    icon: Icon(
+                      Icons.download_outlined,
+                      size: 20,
+                      color: isDark ? const Color(0xFFE2E2E6) : AppColors.onSurface,
+                    ),
+                    onPressed: onDownload,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                    onPressed: onDelete,
+                  ),
                   const Spacer(),
                   _buildStatusBadge(),
                 ],
